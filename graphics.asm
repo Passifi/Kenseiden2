@@ -27,12 +27,16 @@ DisplayBit    equ %01000000
 VIrqBIT       equ %00100000 
 DMAEnableBit  equ %00010000 
 Cell30ModeBit equ %00001000 
-
+VRAMWrite     equ $4000
 
 writeToRegister MACRO
   move.w #((($80|(\2&$1f))<<8)|\1),(vdp_control)
 ENDM
 
+writeToVRAMAddr: MACRO
+  move.w #VRAMWrite|($3f&\1),(vdp_control)
+  move.w #(\1>>14),(vdp_control) 
+ENDM
 initializeVDP:
   writeToRegister (Mode1_Base|HV_CounterBit),(vdp_mode_1) 
   writeToRegister (Mode2_Base),vdp_mode_2
@@ -73,5 +77,6 @@ clearCRAM:
   move.w #($80/2),d1
 .loop 
   move.w d0,(a1)
+  add.w #15,d0 
   dbf d1,.loop
   rts
