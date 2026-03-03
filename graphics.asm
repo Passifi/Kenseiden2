@@ -29,17 +29,47 @@ DMAEnableBit  equ %00010000
 Cell30ModeBit equ %00001000 
 VRAMWrite     equ $4000
 
+string:
+  dc.b "hello world!"
+strEnd:
 writeToRegister MACRO
   move.w #((($80|(\2&$1f))<<8)|\1),(vdp_control)
 ENDM
 
 writeToVRAMAddr: MACRO
-  move.w #VRAMWrite|($3f&\1),(vdp_control)
+  move.w #VRAMWrite|($3fff&\1),(vdp_control)
   move.w #(\1>>14),(vdp_control) 
 ENDM
+
+setVRAMAddr:
+  clr.l d1
+  move.w d0,d1 
+  and.w #$3fff,d0
+  or.w #VRAMWrite,d0 
+  move.w d0,(vdp_control)
+  lsr.w #7,d1
+  lsr.w #7,d1
+  move.w d1,d4
+  move.w d1,(vdp_control)
+  rts 
+print:
+  clr.l d0
+  move.w #$c000,d0
+  jsr setVRAMAddr
+  lea (string),a0 
+  lea vdp_data,a1
+  move.w #(strEnd-string),d1
+  clr.l d0 
+  or.w #$8000,d0
+.loop 
+  move.b (a0)+,d0 
+  addq.b #1,d0
+  move.w d0,(a1)
+  dbf d1,.loop
+  rts
 initializeVDP:
   writeToRegister (Mode1_Base|HV_CounterBit),(vdp_mode_1) 
-  writeToRegister (Mode2_Base),vdp_mode_2
+  writeToRegister ((Mode2_Base)|%01000000),vdp_mode_2
   writeToRegister %00000000,vdp_mode_3 
   writeToRegister $30,patternA_addr 
   writeToRegister $34,patternWindow_addr 

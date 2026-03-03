@@ -4,10 +4,10 @@
 
 copyLettersToVRAM:
 
-  writeToVRAMAddr 2080
+  writeToVRAMAddr $0c20
   lea letters,a0
   lea vdp_data,a1 
-  move #416,d1 
+  move #((_end-letters)/2),d1 
 .loop
   move.w (a0)+,(a1)
   dbf d1,.loop
@@ -20,17 +20,10 @@ EntryPoint:
   jsr ClearVRAM
   jsr clearCRAM
   jsr copyLettersToVRAM 
-  move.w #$2300,SR
   move.l #0,d2
+  jsr print
+  move.w #$2300,SR
 LoopPoint:
-  lea (vdp_control),a0
-  tst.w (vdp_control)   
-  lea (vdp_data),a1
-  clr.l d3
-  move.b d2,d3
-  or.w #$8700,d3
-  move.w d3,(a0)  
-  addq.b #1,d2
   jmp LoopPoint
 
 HBlankInterrupt:
