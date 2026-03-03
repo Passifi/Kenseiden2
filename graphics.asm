@@ -30,7 +30,7 @@ Cell30ModeBit equ %00001000
 VRAMWrite     equ $4000
 
 string:
-  dc.b "hello world!"
+  dc.b "hello world!\0"
 strEnd:
 writeToRegister MACRO
   move.w #((($80|(\2&$1f))<<8)|\1),(vdp_control)
@@ -53,19 +53,19 @@ setVRAMAddr:
   move.w d1,(vdp_control)
   rts 
 print:
-  clr.l d0
   move.w #$c000,d0
   jsr setVRAMAddr
-  lea (string),a0 
   lea vdp_data,a1
-  move.w #(strEnd-string),d1
   clr.l d0 
   or.w #$8000,d0
 .loop 
   move.b (a0)+,d0 
+  cmp.b '\0',d0
+  beq .end
   addq.b #1,d0
   move.w d0,(a1)
-  dbf d1,.loop
+  jmp .loop
+.end
   rts
 initializeVDP:
   writeToRegister (Mode1_Base|HV_CounterBit),(vdp_mode_1) 

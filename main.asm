@@ -2,8 +2,14 @@
   include "system/cartridgeHeader.asm"
   include "graphics.asm"
 
-copyLettersToVRAM:
+TurnOffIRQ: Macro 
+  move.w #$2700,SR 
+  ENDM
+TurnOnIRQ: Macro 
+  move.w #$2300,SR 
+  ENDM
 
+copyLettersToVRAM:
   writeToVRAMAddr $0c20
   lea letters,a0
   lea vdp_data,a1 
@@ -15,28 +21,29 @@ copyLettersToVRAM:
 
 
 EntryPoint:
-	move.w #$2700,SR 
+  TurnOnIRQ
   jsr initializeVDP 
   jsr ClearVRAM
   jsr clearCRAM
   jsr copyLettersToVRAM 
   move.l #0,d2
+  lea errorStr,a0
   jsr print
-  move.w #$2300,SR
-LoopPoint:
-  jmp LoopPoint
+  TurnOffIRQ
+mainLoop:
+  jmp mainLoop
 
 HBlankInterrupt:
-  
   rte 
 
 VBlankInterrupt:
-
   rte
 
 Exception:
   rte
 letters:
   incbin "letters.bin"
+errorStr:
+  dc.b "something went wrong\0"
 _end: 
 
