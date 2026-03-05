@@ -1,3 +1,8 @@
+RAMStart    equ $ff0000
+
+SpriteTable equ RAMStart
+variableStart equ $ffff00
+
 vdp_control equ $C00004
 vdp_data    equ $C00000
 
@@ -40,7 +45,7 @@ writeToVRAMAddr: MACRO
   move.w #VRAMWrite|($3fff&\1),(vdp_control)
   move.w #(\1>>14),(vdp_control) 
 ENDM
-
+  
 setVRAMAddr:
   clr.l d1
   move.w d0,d1 
@@ -54,6 +59,10 @@ setVRAMAddr:
   rts 
 print:
   move.w #$c000,d0
+  lsl.w #1,d2
+  lsl.w #7,d3 
+  add.w d2,d0
+  add.w d3,d0
   jsr setVRAMAddr
   lea vdp_data,a1
   clr.l d0 
@@ -110,3 +119,53 @@ clearCRAM:
   add.w #15,d0 
   dbf d1,.loop
   rts
+
+clearSprites:
+  clr.b (numOfSprites)
+  clr.l (SpriteTable+0)
+  clr.l (SpriteTable+4)
+  rts
+
+addSprite:
+  cmp.w #SCREEN_W,d0 
+  bge.s .skip
+  cmp.w #-32,d0 
+  ble.s .skip
+  cmp.w #SCREEN_H,d1 
+  bge.s .skip
+  
+  lea (SpriteTable),a0 
+  move.b (numOfSprites),d4 
+  beq.s .first 
+  cmp.b #MAX_SPRITES,d4 
+  bhs.s .skip 
+  
+  moveq #0,d5 
+  move.b d4,d5 
+  lsl.w #3,d5 
+  lea (a0,d5.w),a0
+  move.b d4,-5(a0)
+.first 
+  add.w #128,d0 
+  add.w #128,d0
+
+  move.w d1,(a0)+
+  move.b d3,(a0)+
+  move.b #0,(a0)+
+  move.w d2,(a0)+
+  move.w d0,(a0)+
+
+  addq.b #1,d4 
+  move.b d4,(numOfSprites)
+.skip
+  rts
+
+buildSpriteTable:
+  move.w (spriteX),d0
+  move.w (spriteY),d1
+  move.w (SpriteTile),d2
+  move.w (SpriteSize),d3
+  bsr AddSprite
+  rts
+
+

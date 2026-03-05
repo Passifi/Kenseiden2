@@ -19,7 +19,6 @@ copyLettersToVRAM:
   dbf d1,.loop
   rts 
 
-
 EntryPoint:
   TurnOnIRQ
   jsr initializeVDP 
@@ -27,6 +26,7 @@ EntryPoint:
   jsr clearCRAM
   jsr copyLettersToVRAM 
   move.l #0,d2
+  move.l #5,d3
   lea errorStr,a0
   jsr print
   TurnOffIRQ
@@ -45,5 +45,6 @@ letters:
   incbin "letters.bin"
 errorStr:
   dc.b "something went wrong\0"
+
 _end: 
 
