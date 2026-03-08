@@ -21,7 +21,11 @@ auto_incr_reg   equ     $0f
 scroll_size     equ     $10 
 window_x_position equ   $11 
 window_y_position equ   $12 
-
+dma_length_low    equ $13 
+dma_length_high   equ $14
+dma_src_low       equ $15 
+dma_src_mid       equ $16
+dma_src_high      equ $17
 
 Mode1_Base equ $4
 HIRQBit     equ %00010000
@@ -45,7 +49,24 @@ writeToVRAMAddr: MACRO
   move.w #VRAMWrite|($3fff&\1),(vdp_control)
   move.w #(\1>>14),(vdp_control) 
 ENDM
-  
+
+
+DMACopyVRAM: MACRO
+  writeToRegister 15,auto_incr_reg
+  writeToRegister (\1&$ff),dma_length_low
+  writeToRegister ((\1&$ff00)>>8),dma_length_high
+  writeToRegister (\2&$ff),dma_src_high
+  writeToRegister (\2&$ff00)>>8,dma_src_mid
+  writeToRegister (\2&$3f0000)>>16,dma_src_low
+  move.w #($4000|(($efff&\3))),(vdp_control)
+  move.w #($80)|(($c000&\3)>>14),(vdp_control)
+END
+
+transferTiledata:
+   
+
+  rts 
+
 setVRAMAddr:
   clr.l d1
   move.w d0,d1 

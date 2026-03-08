@@ -30,6 +30,7 @@ EntryPoint:
   lea errorStr,a0
   jsr print
   TurnOffIRQ
+
 mainLoop:
   jmp mainLoop
 
@@ -37,6 +38,7 @@ HBlankInterrupt:
   rte 
 
 VBlankInterrupt:
+  DMACopyVRAM 1000,$2000,$a000 
   rte
 
 Exception:
