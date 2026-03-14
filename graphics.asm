@@ -3,9 +3,19 @@ RAMStart    equ $ff0000
 SpriteTable equ RAMStart
 variableStart equ $ffff00
 
+VRAMWrite   equ $4000
+CRAMWrite   equ $C000
+
+SCREEN_H equ 320 
+SCREEN_W equ 200 
+numOfSprites equ 64
 vdp_control equ $C00004
 vdp_data    equ $C00000
-
+SpriteSize equ 16
+spriteX equ 1
+spriteY equ 2
+SpriteTile equ 2 
+MAX_SPRITES equ 53
 vdp_mode_1          equ $00
 vdp_mode_2          equ $01
 patternA_addr       equ $02
@@ -27,6 +37,8 @@ dma_src_low       equ $15
 dma_src_mid       equ $16
 dma_src_high      equ $17
 
+SET_REGISTER  equ $8000
+
 Mode1_Base equ $4
 HIRQBit     equ %00010000
 HV_CounterBit     equ %00000100
@@ -36,7 +48,6 @@ DisplayBit    equ %01000000
 VIrqBIT       equ %00100000 
 DMAEnableBit  equ %00010000 
 Cell30ModeBit equ %00001000 
-VRAMWrite     equ $4000
 
 string:
   dc.b "hello world!\0"
@@ -51,19 +62,71 @@ writeToVRAMAddr: MACRO
 ENDM
 
 
+
 DMACopyVRAM: MACRO
-  writeToRegister 15,auto_incr_reg
-  writeToRegister (\1&$ff),dma_length_low
-  writeToRegister ((\1&$ff00)>>8),dma_length_high
-  writeToRegister (\2&$ff),dma_src_high
-  writeToRegister (\2&$ff00)>>8,dma_src_mid
-  writeToRegister (\2&$3f0000)>>16,dma_src_low
+  writeToRegister %01110000|Mode2_Base,vdp_mode_2
+  writeToRegister (\1>>1&$ff),dma_length_low
+  writeToRegister ((\1>>1&$ff00)>>8),dma_length_high
+  writeToRegister ((\2>>1)&$ff),dma_src_low
+  writeToRegister ((\2>>1)&$ff00)>>8,dma_src_mid
+  writeToRegister ((\2>>1)&$3f0000)>>16,dma_src_high
   move.w #($4000|(($efff&\3))),(vdp_control)
   move.w #($80)|(($c000&\3)>>14),(vdp_control)
-END
+  writeToRegister %01100000|Mode2_Base,vdp_mode_2
+ENDM
+
+SetRegister: MACRO 
+  move.w #SET_REGISTER,d0 
+  or.w #(\1<<8),d0 
+ENDM 
+
+Even
+DMACopy:
+  ; d1 contains length, d2 contains src d3 contains target and d4 contains ram type  
+  lea vdp_control,a0
+  lsr.l #1,d1
+  lsr.l #1,d2
+  SetRegister vdp_mode_2
+  or.w #%01110000|Mode2_Base,d0 
+  move.w d0,(a0);register is set dma is activated 
+  ; set length low 
+  SetRegister dma_length_low 
+  or.b d1,d0 
+  move.w d0,(a0)
+  lsr.l #8,d1
+  ; set length high
+  SetRegister dma_length_high 
+  or.b d1,d0
+  move.w d0,(a0)
+  ; set low srcbyte
+  SetRegister dma_src_low 
+  or.b d2,d0 
+  move.w d0,(a0)
+  ;set mid source byte
+  SetRegister dma_src_mid 
+  lsr.l #8,d2 
+  or.b d2,d0 
+  move.w d0,(a0)
+  ; set high src byte
+  SetRegister dma_src_high 
+  lsr.l #8,d2
+  and.b #$ef,d2
+  or.b d2,d0 
+  move.w d0,(a0)
+  ; calcualte address data
+  move.l d3,d0
+  and.w #$efff,d0 
+  or.w d4,d0 ; set ramType (VRAM,CRAM,VSRAM)
+  move.w d0,(a0)
+  and.w #$c000,d3 
+  lsr.w #6,d3 
+  lsr.w #8,d3
+  move.w d3,d0 
+  or.b #$80,d0 
+  move.w d0,(a0)
+  rts
 
 transferTiledata:
-   
 
   rts 
 
@@ -99,7 +162,7 @@ print:
   rts
 initializeVDP:
   writeToRegister (Mode1_Base|HV_CounterBit),(vdp_mode_1) 
-  writeToRegister ((Mode2_Base)|%01000000),vdp_mode_2
+  writeToRegister ((Mode2_Base)|%01100000),vdp_mode_2
   writeToRegister %00000000,vdp_mode_3 
   writeToRegister $30,patternA_addr 
   writeToRegister $34,patternWindow_addr 
@@ -186,7 +249,7 @@ buildSpriteTable:
   move.w (spriteY),d1
   move.w (SpriteTile),d2
   move.w (SpriteSize),d3
-  bsr AddSprite
+  jsr addSprite
   rts
 
 

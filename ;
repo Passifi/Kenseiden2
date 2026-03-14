@@ -6,7 +6,6 @@ Ctrl_Port_1 equ $A10009
 Data_Port_1 equ $A10003
 PressedButtons equ RAM_START+10
 GraphicStack equ RAM_START+100
-GraphicStackPointer equ RAM_START+104
 TurnOffIRQ: Macro 
   move.w #$2700,SR 
   ENDM
@@ -59,14 +58,13 @@ copyTiles:
 EntryPoint:
   TurnOffIRQ
   move.l #0,RAM_START
+  
   jsr initializeVDP 
   jsr ClearVRAM
   jsr clearCRAM
   jsr copyLettersToVRAM 
   jsr copyTiles
   jsr clearRAM
-
-  move.l #GraphicStack,(GraphicStackPointer) 
   move.l #((tileDataEnd-tileData)/2),d1 ;
   move.l #tileData,d2 
   move.l #$0000,d3
@@ -118,6 +116,7 @@ processDown:
   bne processLeft  
   btst #1,d1 
   beq processLeft 
+  move.b #-1,d3
   jsr changeBackgroundColor
 processLeft:
 processRight:
@@ -139,25 +138,12 @@ colorChange:
  
   rts
 changeBackgroundColor:
-  move.l (GraphicStackPointer),a0
+  ; inc or decrement based on d3 value
+  lea (RAM_START+100),a0 
   move.l #colorChange,d0
-  move.l d0,-(a0)
-  move.l a0,(GraphicStackPointer)
-  rts
-
-handleGraphicStack:
-  move.l (GraphicStackPointer),a0
-
-  cmpa.l #GraphicStack,a0
-  bge .end
-.loop
-  movea.l (a0),a1
-  jsr (a1)
-  adda.l #4,a0
-  cmpa.l #GraphicStack,a0
-  blt .loop
-  move.l a0,(GraphicStackPointer)
-.end
+  move.l d0,(a0)
+  
+.loop  
   rts
 
 dmaBranchTest:
@@ -198,7 +184,6 @@ HBlankInterrupt:
 
 VBlankInterrupt: 
   jsr readCTRL 
-  jsr handleGraphicStack 
   rte
 
 Exception:
