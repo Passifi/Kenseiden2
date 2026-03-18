@@ -1,8 +1,8 @@
 RAMStart    equ $ff0000
 
-SpriteTable equ RAMStart
+SpriteTable equ RAMStart+1000
 variableStart equ $ffff00
-
+SpriteTableVDP_Base equ $F000
 VRAMWrite   equ $4000
 CRAMWrite   equ $C000
 
@@ -130,6 +130,15 @@ transferTiledata:
 
   rts 
 
+copySpriteTable:
+  ; for now copy the entire possible size of the sprite table 
+  move.l #$800,d1 
+  move.l #SpriteTable,d2 
+  move.l #SpriteTableVDP_Base,d3 
+  move.l #VRAMWrite,d4
+  jsr DMACopy
+  rts
+
 setVRAMAddr:
   clr.l d1
   move.w d0,d1 
@@ -232,13 +241,11 @@ addSprite:
 .first 
   add.w #128,d0 
   add.w #128,d0
-
   move.w d1,(a0)+
   move.b d3,(a0)+
   move.b #0,(a0)+
   move.w d2,(a0)+
   move.w d0,(a0)+
-
   addq.b #1,d4 
   move.b d4,(numOfSprites)
 .skip

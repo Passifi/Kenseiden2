@@ -7,6 +7,22 @@ Data_Port_1 equ $A10003
 PressedButtons equ RAM_START+10
 GraphicStack equ RAM_START+100
 GraphicStackPointer equ RAM_START+104
+MainTimer equ RAM_START+200
+TimerArray equ RAM_START+204
+WaitTimer equ TimerArray
+PressWait equ $30
+CursorPosition equ RAM_START+400
+CursorX equ CursorPosition 
+CursorY equ CursorPosition+2
+; struct Cursor {
+;   dc.w: x;
+;   dc.w: y;
+;}
+
+SetCursor: Macro 
+  move.w #\1,CursorX
+  move.w #\2,CursorY
+ENDM
 TurnOffIRQ: Macro 
   move.w #$2700,SR 
   ENDM
@@ -14,20 +30,26 @@ TurnOnIRQ: Macro
   move.w #$2300,SR 
   ENDM
 
-fibanocci:
-  lea RAM_START,a0  
-  move.l #1,d1 
-  move.l #1,d2 
-  move.l #0,d3
-  move.l #32,d4
+IncTimer: Macro 
+  addq.l #1,MainTimer
+ENDM
+
+PushTimer: Macro 
+  ; movea.l stackPtr,a0
+  move.w #\1,-(a0)
+  move.w #\2,-(a0)
+  ; move.l a0,stackPtr
+ENDM
+
+CleanUpTimers: Macro 
+  ; lea stackAddress,a0
+  ; movea.l stackPtr,a1
 .loop
-  move.l d2,d3 
-  add.l d1,d3 
-  move.l d2,d1 
-  move.l d3,d2
-  move.w d3,(a0)+
-  dbra d4,.loop
-  rts 
+  cmpa.w a0,a1
+  beq .end
+  move.w (a0)
+.end
+ENDM
 
 readCTRL:
   move.b #$40,(Data_Port_1)
@@ -54,6 +76,20 @@ copyLettersToVRAM:
   dbf d1,.loop
   rts
 
+handleTimers:
+  lea TimerArray,a0 
+  move.l #10,d1
+.loop 
+  move.w (a0),d0
+  subq.w #1,d0
+  cmp #0,d0 
+  blt .pos
+  eor.w d0,d0
+.pos
+  move.w d0,(a0)+
+  dbra d1,.loop
+  rts
+
 copyTiles:
   rts
 EntryPoint:
@@ -65,7 +101,12 @@ EntryPoint:
   jsr copyLettersToVRAM 
   jsr copyTiles
   jsr clearRAM
-
+  lea TimerArray,a0 
+  move.w #10,d1
+  SetCursor 12,12
+.loop1
+  move.w #$ffff,(a0)+ 
+  dbf d1,.loop1
   move.l #GraphicStack,(GraphicStackPointer) 
   move.l #((tileDataEnd-tileData)/2),d1 ;
   move.l #tileData,d2 
@@ -76,6 +117,11 @@ EntryPoint:
   move.l #colors,d2
   move.l #$0000,d3 
   move.l #CRAMWrite,d4
+  jsr DMACopy
+  move.l #cursorData,d2 
+  move.l #((cursorDataEnd-cursorData)/2),d1
+  move.l #$0020,d3 
+  move.l #VRAMWrite,d4
   jsr DMACopy
   move.l #0,d0 
   lea vdp_control,a0 
@@ -93,15 +139,15 @@ EntryPoint:
 .loop 
   move.l d1,(a1)
   dbra d1,.loop
-
+  jsr changeSprites
   TurnOnIRQ
 mainLoop:
   jsr inputHandler
-
   jmp mainLoop
 
 inputHandler:
   move.b RAM_START,d0
+  move.b #$7f,RAM_START 
   move.b PressedButtons,d1
   ; check whether button is pressed  
   ; second check checks whether it was pressed before
@@ -111,14 +157,12 @@ inputHandler:
   beq processDown 
 processUp:
   move.b #1,d3 
-  jsr changeBackgroundColor
   jmp processStart
 processDown:
   btst #1,d0
   bne processLeft  
   btst #1,d1 
   beq processLeft 
-  jsr changeBackgroundColor
 processLeft:
 processRight:
 processA:
@@ -136,22 +180,27 @@ colorChange:
   move.b d0,(RAM_START+1)
   or.w #$8700,d0 
   move.w d0,(vdp_control)
- 
   rts
 changeBackgroundColor:
   move.l (GraphicStackPointer),a0
-  move.l #colorChange,d0
-  move.l d0,-(a0)
+  move.w #colorChange,d0
+  move.w d0,-(a0)
+  move.l a0,(GraphicStackPointer)
+  rts
+
+changeSprites:
+  move.l (GraphicStackPointer),a0 
+  move.w #copySpriteTable,d0
+  move.w d0,-(a0)
   move.l a0,(GraphicStackPointer)
   rts
 
 handleGraphicStack:
   move.l (GraphicStackPointer),a0
-
   cmpa.l #GraphicStack,a0
   bge .end
 .loop
-  movea.l (a0),a1
+  movea.w (a0),a1
   jsr (a1)
   adda.l #4,a0
   cmpa.l #GraphicStack,a0
@@ -188,17 +237,15 @@ four:
   move.l #$1300,d6
   rts
 
-
-
-
 HBlankInterrupt:
   jsr readCTRL
   ;DMACopyVRAM 1000,$0000,$0000 
   rte 
 
 VBlankInterrupt: 
-  jsr readCTRL 
-  jsr handleGraphicStack 
+  jsr handleTimers
+  jsr readCTRL
+  jsr handleGraphicStack
   rte
 
 Exception:
@@ -214,6 +261,9 @@ colorsEnd:
 tileData:
   incbin "shinobirip.bin"
 tileDataEnd:
+cursorData:
+  incbin "cursor.bin"
+cursorDataEnd:
 errorStr:
   dc.b "something went wrong\0"
 jumpTable:
