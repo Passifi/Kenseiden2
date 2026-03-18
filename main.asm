@@ -139,7 +139,6 @@ EntryPoint:
 .loop 
   move.l d1,(a1)
   dbra d1,.loop
-  jsr changeSprites
   TurnOnIRQ
 mainLoop:
   jsr inputHandler
@@ -243,6 +242,7 @@ HBlankInterrupt:
   rte 
 
 VBlankInterrupt: 
+  jsr copySpriteTable
   jsr handleTimers
   jsr readCTRL
   jsr handleGraphicStack

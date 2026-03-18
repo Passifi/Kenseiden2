@@ -84,8 +84,10 @@ Even
 DMACopy:
   ; d1 contains length, d2 contains src d3 contains target and d4 contains ram type  
   lea vdp_control,a0
+  ; shift src and length registers to get proper length 
   lsr.l #1,d1
   lsr.l #1,d2
+
   SetRegister vdp_mode_2
   or.w #%01110000|Mode2_Base,d0 
   move.w d0,(a0);register is set dma is activated 
@@ -110,7 +112,7 @@ DMACopy:
   ; set high src byte
   SetRegister dma_src_high 
   lsr.l #8,d2
-  and.b #$ef,d2
+  and.b #$7f,d2
   or.b d2,d0 
   move.w d0,(a0)
   ; calcualte address data
@@ -132,7 +134,7 @@ transferTiledata:
 
 copySpriteTable:
   ; for now copy the entire possible size of the sprite table 
-  move.l #$800,d1 
+  move.l #$300,d1 
   move.l #SpriteTable,d2 
   move.l #SpriteTableVDP_Base,d3 
   move.l #VRAMWrite,d4
