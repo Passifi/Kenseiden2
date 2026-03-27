@@ -4,8 +4,8 @@
 	dc.l   $00FFE000      
 	dc.l   EntryPoint     
 	dc.l   Exception     
-	dc.l   Exception    
-	dc.l   Exception   
+	dc.l   AddressError    
+	dc.l   IllegalInstruction   
 	dc.l   Exception  
 	dc.l   Exception 
 	dc.l   Exception

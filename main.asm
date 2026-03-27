@@ -90,6 +90,15 @@ handleTimers:
   dbra d1,.loop
   rts
 
+fillRAM:
+  lea SpriteTable,a0 
+  move.l #$300,d1
+  move.l #$ffff,d0
+.loop
+  move.w d0,(a0)+ 
+  dbra d1,.loop
+  rts
+
 copyTiles:
   rts
 EntryPoint:
@@ -102,6 +111,7 @@ EntryPoint:
   jsr copyTiles
   jsr clearRAM
   lea TimerArray,a0 
+  jsr fillRAM
   move.w #10,d1
   SetCursor 12,12
 .loop1
@@ -139,7 +149,7 @@ EntryPoint:
 .loop 
   move.l d1,(a1)
   dbra d1,.loop
-  TurnOnIRQ
+ TurnOnIRQ
 mainLoop:
   jsr inputHandler
   jmp mainLoop
@@ -242,12 +252,39 @@ HBlankInterrupt:
   rte 
 
 VBlankInterrupt: 
+  jsr clearSprites 
+  move.w (CursorX),d0 
+  move.w (CursorY),d1
+  addq.w #5,d0 
+  addq.w #5,d1
+  and.w #$1ff,d0 
+  and.w #$1ff,d1
+  move.w d0,(CursorX)
+  move.w d1,(CursorY)
+  move.w #2,d2 
+  move.w #0,d3 
+  jsr addSprite
+
   jsr copySpriteTable
   jsr handleTimers
   jsr readCTRL
-  jsr handleGraphicStack
+  ;jsr handleGraphicStack
   rte
+AddressError:
+  move.l #$1111,d0 
+  move.l #$2222,d1 
+  move.l #$3333,d2 
+  move.l #$4444,d3 
+  move.l #$5555,d4 
+  move.l #$6666,d5 
+  move.l #$7777,d6 
+  move.l #$8888,d7
+  jmp AddressError
+  rte 
 
+IllegalInstruction:
+
+  rte
 Exception:
   rte
 letters:

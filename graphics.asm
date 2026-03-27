@@ -117,7 +117,7 @@ DMACopy:
   move.w d0,(a0)
   ; calcualte address data
   move.l d3,d0
-  and.w #$efff,d0 
+  and.w #$3fff,d0 
   or.w d4,d0 ; set ramType (VRAM,CRAM,VSRAM)
   move.w d0,(a0)
   and.w #$c000,d3 
@@ -220,6 +220,13 @@ clearSprites:
   clr.l (SpriteTable+0)
   clr.l (SpriteTable+4)
   rts
+
+; addsprite usage 
+; set 
+; move.w (SpriteX),d0 
+; move.w (SpriteY),d1 
+; move.w (SpriteTile),d2 
+; move.w (SpriteSize),d3
 
 addSprite:
   cmp.w #SCREEN_W,d0 
