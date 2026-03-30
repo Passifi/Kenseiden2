@@ -247,8 +247,7 @@ addSprite:
   lsl.w #3,d5 
   lea (a0,d5.w),a0
   move.b d4,-5(a0)
-.first 
-  add.w #128,d0 
+.first
   add.w #128,d0
   move.w d1,(a0)+
   move.b d3,(a0)+

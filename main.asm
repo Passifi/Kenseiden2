@@ -1,24 +1,27 @@
   include "system/cpuVectors.asm"
   include "system/cartridgeHeader.asm"
   include "graphics.asm"
-RAM_START equ $ff0000
+; Ports 
 Ctrl_Port_1 equ $A10009
 Data_Port_1 equ $A10003
-PressedButtons equ RAM_START+10
-GraphicStack equ RAM_START+100
-GraphicStackPointer equ RAM_START+104
-MainTimer equ RAM_START+200
-TimerArray equ RAM_START+204
-WaitTimer equ TimerArray
-PressWait equ $30
-CursorPosition equ RAM_START+400
-CursorX equ CursorPosition 
-CursorY equ CursorPosition+2
-; struct Cursor {
-;   dc.w: x;
-;   dc.w: y;
-;}
 
+RAM_START           equ $ff0000
+PressedButtons      equ RAM_START+10
+GraphicStack        equ RAM_START+100
+GraphicStackPointer equ RAM_START+104
+MainTimer           equ RAM_START+200
+TimerArray          equ RAM_START+204 ;; consider always marking how large a memory block is and not just where it starts
+WaitTimer           equ TimerArray
+PressWait           equ $30
+CursorPosition      equ RAM_START+400
+CursorX             equ CursorPosition 
+CursorY             equ CursorPosition+2
+CurrentTileNo       equ CursorPosition+4
+VblankStatus       equ RAM_START+500
+; Macros
+; constants 
+WAITING_FOR_VBLANK  equ 0 
+VBLANK_OCCURED      equ 1
 SetCursor: Macro 
   move.w #\1,CursorX
   move.w #\2,CursorY
@@ -51,72 +54,27 @@ CleanUpTimers: Macro
 .end
 ENDM
 
-readCTRL:
-  move.b #$40,(Data_Port_1)
-  move.b #$40,(Ctrl_Port_1)
-  move.b (Data_Port_1),(RAM_START)
-  rts 
-
-clearRAM:
-  lea RAM_START,a0 
-  move.l #0,d0 
-  move.l #($ffffff-RAM_START)>>4,d1 
-.loop 
-  move.l d0,(a0)+ 
-  dbra d1,.loop 
-  rts
-
-copyLettersToVRAM:
-  writeToVRAMAddr $0c20
-  lea letters,a0
-  lea vdp_data,a1 
-  move #((lettersEnd-letters)/2),d1 
-.loop
-  move.w (a0)+,(a1)
-  dbf d1,.loop
-  rts
-
-handleTimers:
-  lea TimerArray,a0 
-  move.l #10,d1
-.loop 
-  move.w (a0),d0
-  subq.w #1,d0
-  cmp #0,d0 
-  blt .pos
-  eor.w d0,d0
-.pos
-  move.w d0,(a0)+
-  dbra d1,.loop
-  rts
-
-fillRAM:
-  lea SpriteTable,a0 
-  move.l #$300,d1
-  move.l #$ffff,d0
-.loop
-  move.w d0,(a0)+ 
-  dbra d1,.loop
-  rts
-
-copyTiles:
-  rts
 EntryPoint:
   TurnOffIRQ
-  move.l #0,RAM_START
   jsr initializeVDP 
+  ; Ram intializations 
+  ; ===============================
   jsr ClearVRAM
   jsr clearCRAM
   jsr copyLettersToVRAM 
   jsr copyTiles
   jsr clearRAM
-  lea TimerArray,a0 
   jsr fillRAM
   move.w #10,d1
-  SetCursor 12,12
+  lea TimerArray,a0 
 .loop1
   move.w #$ffff,(a0)+ 
   dbf d1,.loop1
+  SetCursor 0,$80
+  move.w #12,(CurrentTileNo)
+  move.b #WAITING_FOR_VBLANK,(VblankStatus)
+; ==================================
+  ; copy initial tiles to VRAM by DMA 
   move.l #GraphicStack,(GraphicStackPointer) 
   move.l #((tileDataEnd-tileData)/2),d1 ;
   move.l #tileData,d2 
@@ -149,10 +107,72 @@ EntryPoint:
 .loop 
   move.l d1,(a1)
   dbra d1,.loop
- TurnOnIRQ
+  TurnOnIRQ
+
 mainLoop:
-  jsr inputHandler
+  move.b VblankStatus,d0 
+  cmp.b #VBLANK_OCCURED,d0 
+  bne mainLoop
+  jsr clearSprites
+
+  move.w (CurrentTileNo),d2 
+  move.w (CursorX),d0
+  move.w (CursorY),d1
+  move.w #0,d3
+  jsr addSprite ; should actually be called outside because its sprite logic same for clear Sprites
+  move.b #WAITING_FOR_VBLANK,VblankStatus
   jmp mainLoop
+
+readCTRL:
+  move.b #$40,(Data_Port_1)
+  move.b #$40,(Ctrl_Port_1)
+  move.b (Data_Port_1),(RAM_START)
+  rts 
+
+clearRAM:
+  lea RAM_START,a0 
+  move.l #0,d0 
+  move.l #($ffffff-RAM_START)>>4,d1 
+.loop 
+  move.l d0,(a0)+ 
+  dbra d1,.loop 
+  rts
+
+fillRAM:
+  lea SpriteTable,a0 
+  move.l #$300,d1
+  move.l #$ffff,d0
+.loop
+  move.w d0,(a0)+ 
+  dbra d1,.loop
+  rts
+
+copyLettersToVRAM:
+  writeToVRAMAddr $0c20
+  lea letters,a0
+  lea vdp_data,a1 
+  move #((lettersEnd-letters)/2),d1 
+.loop
+  move.w (a0)+,(a1)
+  dbf d1,.loop
+  rts
+copyTiles:
+  rts
+
+handleTimers:
+  lea TimerArray,a0 
+  move.l #10,d1
+.loop 
+  move.w (a0),d0
+  subq.w #1,d0
+  cmp #0,d0 
+  blt .pos
+  eor.w d0,d0
+.pos
+  move.w d0,(a0)+
+  dbra d1,.loop
+  rts
+
 
 inputHandler:
   move.b RAM_START,d0
@@ -246,29 +266,30 @@ four:
   move.l #$1300,d6
   rts
 
+moveCursor:
+  move.w (CursorX),d0
+  move.w (CursorY),d1
+  addq.w #1,d0
+  addq.w #1,d1
+  and.w #$1ff,d0
+  and.w #$1ff,d1
+  move.w d0,(CursorX)
+  move.w d1,(CursorY)
+  rts
+
 HBlankInterrupt:
-  jsr readCTRL
   ;DMACopyVRAM 1000,$0000,$0000 
   rte 
 
 VBlankInterrupt: 
-  jsr clearSprites 
-  move.w (CursorX),d0 
-  move.w (CursorY),d1
-  addq.w #5,d0 
-  addq.w #5,d1
-  and.w #$1ff,d0 
-  and.w #$1ff,d1
-  move.w d0,(CursorX)
-  move.w d1,(CursorY)
-  move.w #2,d2 
-  move.w #0,d3 
-  jsr addSprite
-
-  jsr copySpriteTable
-  jsr handleTimers
-  jsr readCTRL
+  movem.l d0-d7,-(sp)
+    move.b #VBLANK_OCCURED,VblankStatus
+    ; handle sprite logic 
+    jsr copySpriteTable
+    jsr handleTimers
+    jsr readCTRL
   ;jsr handleGraphicStack
+  movem.l (sp)+,d0-d7
   rte
 AddressError:
   move.l #$1111,d0 
@@ -299,6 +320,7 @@ tileData:
   incbin "shinobirip.bin"
 tileDataEnd:
 cursorData:
+  move.w #0,d3
   incbin "cursor.bin"
 cursorDataEnd:
 errorStr:
