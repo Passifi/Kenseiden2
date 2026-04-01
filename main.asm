@@ -1,12 +1,17 @@
   include "system/cpuVectors.asm"
   include "system/cartridgeHeader.asm"
   include "graphics.asm"
+
 ; Ports 
 Ctrl_Port_1 equ $A10009
 Data_Port_1 equ $A10003
+Z80Ram      equ $A00000  ; Where Z80 RAM starts
+Z80BusReq   equ $A11100  ; Z80 bus request line
+Z80Reset    equ $A11200  ; Z80 reset line
 
 RAM_START           equ $ff0000
-PressedButtons      equ RAM_START+10
+PressedButtons      equ RAM_START+1
+EditingFlags       equ RAM_START+2
 GraphicStack        equ RAM_START+100
 GraphicStackPointer equ RAM_START+104
 MainTimer           equ RAM_START+200
@@ -17,11 +22,33 @@ CursorPosition      equ RAM_START+400
 CursorX             equ CursorPosition 
 CursorY             equ CursorPosition+2
 CurrentTileNo       equ CursorPosition+4
-VblankStatus       equ RAM_START+500
+CurrentTileSize     equ CursorPosition+6
+VblankStatus        equ RAM_START+500
+Tilemap             equ RAM_START+$600 
 ; Macros
 ; constants 
 WAITING_FOR_VBLANK  equ 0 
 VBLANK_OCCURED      equ 1
+UP_BTN              equ 0
+RequestBus          equ $100
+ReleaseBus          equ 0
+BusReadyBit         equ 0
+Edit_Mode_CursorBit    equ 0
+FastPauseZ80: macro
+  move.w #RequestBus,(Z80BusReq) 
+  endm
+  
+PauseZ80: Macro
+  move.w #RequestBus,(Z80BusReq)
+.wait 
+  btst #BusReadyBit,(Z80BusReq)
+  bne.s .wait
+  ENDM
+
+ResumeZ80: Macro
+  move.w #ReleaseBus,(Z80BusReq)
+  ENDM
+
 SetCursor: Macro 
   move.w #\1,CursorX
   move.w #\2,CursorY
@@ -54,11 +81,19 @@ CleanUpTimers: Macro
 .end
 ENDM
 
+SetupControllers: Macro 
+  FastPauseZ80
+    move.b  #$40,(Ctrl_Port_1)   ; 1P control port
+    move.b  #$40,(Data_Port_1)   ; 1P data port
+  ResumeZ80
+  ENDM
+
 EntryPoint:
   TurnOffIRQ
   jsr initializeVDP 
   ; Ram intializations 
   ; ===============================
+  SetupControllers
   jsr ClearVRAM
   jsr clearCRAM
   jsr copyLettersToVRAM 
@@ -88,7 +123,7 @@ EntryPoint:
   jsr DMACopy
   move.l #cursorData,d2 
   move.l #((cursorDataEnd-cursorData)/2),d1
-  move.l #$0020,d3 
+  move.l #$0020,d3  
   move.l #VRAMWrite,d4
   jsr DMACopy
   move.l #0,d0 
@@ -113,21 +148,38 @@ mainLoop:
   move.b VblankStatus,d0 
   cmp.b #VBLANK_OCCURED,d0 
   bne mainLoop
+  jsr inputHandler 
   jsr clearSprites
-
   move.w (CurrentTileNo),d2 
   move.w (CursorX),d0
   move.w (CursorY),d1
-  move.w #0,d3
+  move.w (CurrentTileSize),d3
   jsr addSprite ; should actually be called outside because its sprite logic same for clear Sprites
   move.b #WAITING_FOR_VBLANK,VblankStatus
   jmp mainLoop
 
 readCTRL:
-  move.b #$40,(Data_Port_1)
-  move.b #$40,(Ctrl_Port_1)
-  move.b (Data_Port_1),(RAM_START)
-  rts 
+  FastPauseZ80
+  lea Data_Port_1,a0
+  move.b #$40,(a0)
+  nop
+  nop
+  nop
+  nop
+  move.b (a0),d0
+  and.b #$3f,d0
+  move.b #$00,(a0)
+  nop
+  nop
+  nop
+  nop
+  move.b (a0),d1
+  and.b #$30,d1 
+  lsl.b #2,d1
+  or.b  d1,d0
+  move.b d0,(RAM_START)
+  ResumeZ80
+  rts
 
 clearRAM:
   lea RAM_START,a0 
@@ -176,28 +228,61 @@ handleTimers:
 
 inputHandler:
   move.b RAM_START,d0
-  move.b #$7f,RAM_START 
-  move.b PressedButtons,d1
-  ; check whether button is pressed  
-  ; second check checks whether it was pressed before
+  move.b (EditingFlags),d1
   btst #0,d0
-  bne processDown  
-  btst #0,d1 
-  beq processDown 
+  bne processDown
 processUp:
-  move.b #1,d3 
+  btst #Edit_Mode_CursorBit,d1
+  bne changeTileUp
+moveUp:
+  sub.w #8,CursorY
+  jmp processLeft
+changeTileUp:
+  addq.w #1,(CurrentTileNo)
   jmp processStart
 processDown:
   btst #1,d0
-  bne processLeft  
-  btst #1,d1 
-  beq processLeft 
+  bne processLeft
+  btst #Edit_Mode_CursorBit,d1
+  bne changeTileDown
+moveDown:
+  add.w #8,CursorY
+  jmp processLeft
+changeTileDown:
+  subq.w #1,(CurrentTileNo)
 processLeft:
+  btst #2,d0 
+  bne processRight
+  sub.w #8,CursorX
 processRight:
+  btst #3,d0 
+  bne processA
+  add.w #8,CursorX
 processA:
+  btst #4,d0 
+  bne processB
+  addq.w #1,CurrentTileSize
 processB:
+  btst #5,d0 
+  bne processC 
+  move.w CurrentTileNo,d3 
+  move.w d3,d2 
+  and.w #$6000,d2 
+  cmp.w #$6000,d2
+  bne incrementPalette
+  and.w #$9fff,d3 
+  move.w d3,CurrentTileNo
+  jmp processC
+incrementPalette:
+  add.w #$2000,d3 
+  move.w d3,CurrentTileNo
 processC:
 processStart:
+  btst #7,d0
+  bne .end
+  move.b (EditingFlags),d2 
+  eor #1,d2
+  move.b d2,(EditingFlags)
 .end
   move.b d0,PressedButtons
   rts 
@@ -308,6 +393,7 @@ IllegalInstruction:
   rte
 Exception:
   rte
+  even
 letters:
   incbin "letters.bin"
 lettersEnd:

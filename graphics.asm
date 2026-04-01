@@ -126,10 +126,10 @@ DMACopy:
   move.w d3,d0 
   or.b #$80,d0 
   move.w d0,(a0)
+  move.w $ff000000,(a0) ; 
   rts
 
 transferTiledata:
-
   rts 
 
 copySpriteTable:
