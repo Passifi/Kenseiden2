@@ -7,7 +7,7 @@ VRAMWrite   equ $4000
 CRAMWrite   equ $C000
 
 SCREEN_H equ 320 
-SCREEN_W equ 200 
+SCREEN_W equ 256 
 numOfSprites equ 64
 vdp_control equ $C00004
 vdp_data    equ $C00000

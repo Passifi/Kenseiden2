@@ -24,7 +24,8 @@ CursorY             equ CursorPosition+2
 CurrentTileNo       equ CursorPosition+4
 CurrentTileSize     equ CursorPosition+6
 VblankStatus        equ RAM_START+500
-Tilemap             equ RAM_START+$600 
+Tilemap             equ RAM_START+$1000
+TilemapEnd          equ Tilemap+64*28*2
 ; Macros
 ; constants 
 WAITING_FOR_VBLANK  equ 0 
@@ -144,6 +145,7 @@ EntryPoint:
   dbra d1,.loop
   TurnOnIRQ
 
+
 mainLoop:
   move.b VblankStatus,d0 
   cmp.b #VBLANK_OCCURED,d0 
@@ -157,6 +159,22 @@ mainLoop:
   jsr addSprite ; should actually be called outside because its sprite logic same for clear Sprites
   move.b #WAITING_FOR_VBLANK,VblankStatus
   jmp mainLoop
+
+setTile:
+  movem.l d0-d7,-(a7) 
+  lea Tilemap,a0 
+  move.w (CursorX),d0 
+  move.w (CursorY),d1
+  move.w (CurrentTileNo),d2
+  lsr.w #3,d0
+  sub.w #$80,d1
+  lsl.w #3,d1
+  add.w d0,d1 
+  lsl.w #1,d1
+  adda.l d1,a0
+  move.w d2,(a0)
+  movem.l (a7)+,d0-d7 
+  rts
 
 readCTRL:
   FastPauseZ80
@@ -261,7 +279,7 @@ processRight:
 processA:
   btst #4,d0 
   bne processB
-  addq.w #1,CurrentTileSize
+  jsr setTile
 processB:
   btst #5,d0 
   bne processC 
@@ -277,6 +295,8 @@ incrementPalette:
   add.w #$2000,d3 
   move.w d3,CurrentTileNo
 processC:
+  btst #6,d0
+  bne processStart 
 processStart:
   btst #7,d0
   bne .end
@@ -325,7 +345,7 @@ handleGraphicStack:
 
 dmaBranchTest:
   ; branch condition is saved in d4 
- 
+
 jumpStart:
   cmp #3,d4 
   bge .end
@@ -366,13 +386,21 @@ HBlankInterrupt:
   ;DMACopyVRAM 1000,$0000,$0000 
   rte 
 
+copyTilemap:
+  move.l #(TilemapEnd-Tilemap),d1 
+  move.l #Tilemap,d2 
+  move.l #$C000,d3 
+  move.l #VRAMWrite,d4
+  jsr DMACopy
+  rts
 VBlankInterrupt: 
   movem.l d0-d7,-(sp)
+    jsr readCTRL
     move.b #VBLANK_OCCURED,VblankStatus
     ; handle sprite logic 
     jsr copySpriteTable
+    jsr copyTilemap
     jsr handleTimers
-    jsr readCTRL
   ;jsr handleGraphicStack
   movem.l (sp)+,d0-d7
   rte
