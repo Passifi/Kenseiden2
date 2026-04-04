@@ -229,22 +229,21 @@ clearSprites:
 ; move.w (SpriteSize),d3
 
 addSprite:
-  cmp.w #SCREEN_W,d0 
+  cmp.w #SCREEN_W,d0
   bge.s .skip
-  cmp.w #-32,d0 
+  cmp.w #-32,d0
   ble.s .skip
-  cmp.w #SCREEN_H,d1 
+  cmp.w #SCREEN_H,d1
   bge.s .skip
   
   lea (SpriteTable),a0 
   move.b (numOfSprites),d4 
   beq.s .first 
   cmp.b #MAX_SPRITES,d4 
-  bhs.s .skip 
-  
-  moveq #0,d5 
-  move.b d4,d5 
-  lsl.w #3,d5 
+  bhs.s .skip
+  moveq #0,d5
+  move.b d4,d5
+  lsl.w #3,d5
   lea (a0,d5.w),a0
   move.b d4,-5(a0)
 .first

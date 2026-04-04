@@ -1,7 +1,7 @@
   include "system/cpuVectors.asm"
   include "system/cartridgeHeader.asm"
   include "graphics.asm"
-
+  include "sound.asm"
 ; Ports 
 Ctrl_Port_1 equ $A10009
 Data_Port_1 equ $A10003
@@ -24,6 +24,7 @@ CursorY             equ CursorPosition+2
 CurrentTileNo       equ CursorPosition+4
 CurrentTileSize     equ CursorPosition+6
 VblankStatus        equ RAM_START+500
+soundIndex          equ RAM_START+506        
 Tilemap             equ RAM_START+$1000
 TilemapEnd          equ Tilemap+64*28*2
 ; Macros
@@ -143,8 +144,10 @@ EntryPoint:
 .loop 
   move.l d1,(a1)
   dbra d1,.loop
+  move #0,d0 
+  move #5,d1 
   TurnOnIRQ
-
+  
 
 mainLoop:
   move.b VblankStatus,d0 
@@ -156,7 +159,7 @@ mainLoop:
   move.w (CursorX),d0
   move.w (CursorY),d1
   move.w (CurrentTileSize),d3
-  jsr addSprite ; should actually be called outside because its sprite logic same for clear Sprites
+  jsr addSprite
   move.b #WAITING_FOR_VBLANK,VblankStatus
   jmp mainLoop
 
@@ -396,6 +399,7 @@ copyTilemap:
 VBlankInterrupt: 
   movem.l d0-d7,-(sp)
     jsr readCTRL
+    jsr soundRoutine
     move.b #VBLANK_OCCURED,VblankStatus
     ; handle sprite logic 
     jsr copySpriteTable
@@ -431,12 +435,27 @@ colors:
   incbin "color.bin"
 colorsEnd:
 tileData:
-  incbin "shinobirip.bin"
+  incbin "eswatdrop.bin"
 tileDataEnd:
 cursorData:
   move.w #0,d3
   incbin "cursor.bin"
 cursorDataEnd:
+sounddata:
+   dc.b VolumeBit,0,0,0
+  dc.b PitchBit
+  dc.w C3
+  dc.b 0
+  dc.b VolumeBit|(1<<5),0,0,0
+  dc.b PitchBit|(1<<5)
+  dc.w E3
+  dc.b 0
+  dc.b VolumeBit|(2<<5),0,0,0
+  dc.b PitchBit|(2<<5)
+  dc.w G3
+  dc.b 0
+
+  dc.b 2,0,0,0
 errorStr:
   dc.b "something went wrong\0"
 jumpTable:
@@ -444,5 +463,5 @@ jumpTable:
   dc.l cramCopy
   dc.l vsramCopy
 
-_end: 
+_end:
 
