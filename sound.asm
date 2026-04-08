@@ -16,8 +16,8 @@ VolumeBit equ 0
 PitchBit  equ 1 
 NoiseBit  equ 2 
 setVolume:  ; d1 attunation, d0 channel
-  ;ror.b #3,d0 
   or.b #$90,d0 
+  and.b #$0f,d1
   or.b d1,d0 
   move.b d0,(PSGPort)
   rts 
@@ -26,7 +26,6 @@ setPitch:  ; d1 pitch,d0  channel
   move d1,d2 
   and.w #$0f,d2 
   lsr.w #4,d1 
-  ;ror.b #3,d0 
   or.b #$80,d0 
   or.b d2,d0 
   move.b d0,(PSGPort)
@@ -39,6 +38,13 @@ noteOff:
   rts 
 
 soundRoutine:
+  move.b (soundTimer),d0 
+  cmp.b #0,d0 
+  ble .processing
+  subq.b #1,d0
+  move.b d0,(soundTimer)
+  bgt .end
+.processing
   ; interval counter
   lea (sounddata),a0 
   move.l (soundIndex),d0
@@ -48,6 +54,7 @@ soundRoutine:
   ; load in data d0 CMD d1 values  d6 delta ,  since it's on long it's probably betters 
   ; to load it as one and do the processing into registers later :)
 .loop
+  addq.l #1,(soundIndex)
   move.b (a0)+,d0 
   move.b (a0)+,d1 
   lsl.l #8,d1
@@ -55,24 +62,25 @@ soundRoutine:
   move.b (a0)+,d6
   btst #VolumeBit,d0
   bne .checkPitch 
-  and.w #$30,d0 
+  and.w #$60,d0 ; filter out the command bits 
   jsr setVolume
   jmp .checkDelta
 .checkPitch:
   btst #PitchBit,d0 
   bne .checkNoise
-  and.w #$30,d0 
+  and.w #$60,d0 
   jsr setPitch
   jmp .checkDelta
 .checkNoise:
-  btst #NoiseBit,d0 
-  move #0,(soundIndex)
-  move #255,d6
+  btst #NoiseBit,d0
+  bne .checkDelta
+  move.l #0,(soundIndex)
+  move #122,(soundTimer)
   jmp .end
 .checkDelta 
   cmp.b #0,d6 
   beq .loop 
-; else set interval in timer and increment soundindex 
+  move.b d6,(soundTimer)
 .end  
   rts 
 

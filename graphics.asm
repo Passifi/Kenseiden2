@@ -36,6 +36,7 @@ dma_length_high   equ $14
 dma_src_low       equ $15 
 dma_src_mid       equ $16
 dma_src_high      equ $17
+HScroll           equ $f400
 
 SET_REGISTER  equ $8000
 
@@ -127,6 +128,9 @@ DMACopy:
   or.b #$80,d0 
   move.w d0,(a0)
   move.w $ff000000,(a0) ; 
+  SetRegister vdp_mode_2
+  or.w #%01100000|Mode2_Base,d0 
+  move.w d0,(a0);register is set dma is activated 
   rts
 
 transferTiledata:
@@ -149,27 +153,7 @@ setVRAMAddr:
   move.w d0,(vdp_control)
   lsr.w #7,d1
   lsr.w #7,d1
-  move.w d1,d4
   move.w d1,(vdp_control)
-  rts 
-print:
-  move.w #$c000,d0
-  lsl.w #1,d2
-  lsl.w #7,d3 
-  add.w d2,d0
-  add.w d3,d0
-  jsr setVRAMAddr
-  lea vdp_data,a1
-  clr.l d0 
-  or.w #$8000,d0
-.loop 
-  move.b (a0)+,d0 
-  cmp.b '\0',d0
-  beq .end
-  addq.b #1,d0
-  move.w d0,(a1)
-  jmp .loop
-.end
   rts
 initializeVDP:
   writeToRegister (Mode1_Base|HV_CounterBit),(vdp_mode_1) 
@@ -178,6 +162,7 @@ initializeVDP:
   writeToRegister $30,patternA_addr 
   writeToRegister $34,patternWindow_addr 
   writeToRegister $07,patternB_addr 
+  writeToRegister $3D,hScroll_data_addr 
   writeToRegister $78,sprite_attrib_table_addr 
   writeToRegister %00000000,6 
   writeToRegister %00000000,background_color_reg 

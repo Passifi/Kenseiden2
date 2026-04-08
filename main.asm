@@ -11,7 +11,9 @@ Z80Reset    equ $A11200  ; Z80 reset line
 
 RAM_START           equ $ff0000
 PressedButtons      equ RAM_START+1
-EditingFlags       equ RAM_START+2
+EditingFlags        equ RAM_START+2
+ScrollPosition      equ RAM_START+5
+randomSeed          equ RAM_START+10
 GraphicStack        equ RAM_START+100
 GraphicStackPointer equ RAM_START+104
 MainTimer           equ RAM_START+200
@@ -24,7 +26,8 @@ CursorY             equ CursorPosition+2
 CurrentTileNo       equ CursorPosition+4
 CurrentTileSize     equ CursorPosition+6
 VblankStatus        equ RAM_START+500
-soundIndex          equ RAM_START+506        
+soundIndex          equ RAM_START+506
+soundTimer          equ RAM_START+510
 Tilemap             equ RAM_START+$1000
 TilemapEnd          equ Tilemap+64*28*2
 ; Macros
@@ -146,14 +149,24 @@ EntryPoint:
   dbra d1,.loop
   move #0,d0 
   move #5,d1 
-  TurnOnIRQ
+  lea Tilemap,a0 
+  move.l #(TilemapEnd-Tilemap),d1
+  move.l #$04aa3432,(randomSeed)
+  move.l #1,d0
+.loop2
+  move.w d0,(a0)+
+  addq.l #1,d0
+  and.w #$3ff,d0
+  dbra d1,.loop2
   
+  TurnOnIRQ
 
 mainLoop:
   move.b VblankStatus,d0 
   cmp.b #VBLANK_OCCURED,d0 
   bne mainLoop
   jsr inputHandler 
+  ; soundroutine here
   jsr clearSprites
   move.w (CurrentTileNo),d2 
   move.w (CursorX),d0
@@ -172,7 +185,7 @@ setTile:
   lsr.w #3,d0
   sub.w #$80,d1
   lsl.w #3,d1
-  add.w d0,d1 
+  add.w d0,d1
   lsl.w #1,d1
   adda.l d1,a0
   move.w d2,(a0)
@@ -384,7 +397,22 @@ moveCursor:
   move.w d0,(CursorX)
   move.w d1,(CursorY)
   rts
-
+rng: ; returns a random value in d0 
+  move.l (randomSeed),d0
+  move.l d0,d2 
+  lsl.l #7,d2
+  lsl.l #6,d2
+  eor.l d2,d0
+  move.l d0,d2
+  lsr.l #7,d2
+  lsr.l #7,d2
+  lsr.l #3,d2
+  eor.l d2,d0
+  move.l d0,d2
+  lsl.l #5,d2
+  eor.l d2,d0
+  move.l d0,(randomSeed)
+  rts
 HBlankInterrupt:
   ;DMACopyVRAM 1000,$0000,$0000 
   rte 
@@ -399,11 +427,15 @@ copyTilemap:
 VBlankInterrupt: 
   movem.l d0-d7,-(sp)
     jsr readCTRL
-    jsr soundRoutine
     move.b #VBLANK_OCCURED,VblankStatus
     ; handle sprite logic 
     jsr copySpriteTable
     jsr copyTilemap
+    writeToVRAMAddr $f400 
+    move.w (ScrollPosition),d0 
+    addq.w #1,d0 
+    move.w d0,(vdp_data)
+    move.w d0,(ScrollPosition)
     jsr handleTimers
   ;jsr handleGraphicStack
   movem.l (sp)+,d0-d7
@@ -442,18 +474,23 @@ cursorData:
   incbin "cursor.bin"
 cursorDataEnd:
 sounddata:
-   dc.b VolumeBit,0,0,0
+  dc.b VolumeBit,0,0,0 
   dc.b PitchBit
   dc.w C3
-  dc.b 0
-  dc.b VolumeBit|(1<<5),0,0,0
-  dc.b PitchBit|(1<<5)
-  dc.w E3
-  dc.b 0
-  dc.b VolumeBit|(2<<5),0,0,0
-  dc.b PitchBit|(2<<5)
-  dc.w G3
-  dc.b 0
+  dc.b 1
+  dc.b PitchBit
+  dc.w GSharp3
+  dc.b 1
+  dc.b PitchBit
+  dc.w C3>>1
+  dc.w D3
+  dc.b 1
+  dc.b PitchBit
+  dc.w GSharp3>>1
+  dc.b 1
+  dc.b PitchBit
+  dc.w F3>>1
+  dc.b 1
 
   dc.b 2,0,0,0
 errorStr:
