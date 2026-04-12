@@ -81,6 +81,14 @@ SetRegister: MACRO
   or.w #(\1<<8),d0 
 ENDM 
 
+SetWindowSize: MACRO 
+  SetRegister window_x_position
+  or.b #\1,d0 
+  move d0,(vdp_control) 
+  SetRegister window_y_position
+  or.b #\2,d0  
+  move d0,(vdp_control) 
+  ENDM
 Even
 DMACopy:
   ; d1 contains length, d2 contains src d3 contains target and d4 contains ram type  

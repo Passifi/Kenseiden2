@@ -12,19 +12,25 @@ Z80Reset    equ $A11200  ; Z80 reset line
 RAM_START           equ $ff0000
 PressedButtons      equ RAM_START+1
 EditingFlags        equ RAM_START+2
-ScrollPosition      equ RAM_START+5
+ScrollPosition      equ RAM_START+6
 randomSeed          equ RAM_START+10
+currentScore        equ RAM_START+20
 GraphicStack        equ RAM_START+100
 GraphicStackPointer equ RAM_START+104
 MainTimer           equ RAM_START+200
 TimerArray          equ RAM_START+204 ;; consider always marking how large a memory block is and not just where it starts
 WaitTimer           equ TimerArray
 PressWait           equ $30
+PlayerPosition      equ RAM_START+300 
+PlayerXAccu         equ RAM_START+300
+PlayerYAccu         equ RAM_START+301
+PlayerX             equ PlayerPosition+2 
+PlayerY             equ PlayerPosition+4 
 CursorPosition      equ RAM_START+400
 CursorX             equ CursorPosition 
-CursorY             equ CursorPosition+2
-CurrentTileNo       equ CursorPosition+4
-CurrentTileSize     equ CursorPosition+6
+CursorY             equ CursorPosition+4
+CurrentTileNo       equ CursorPosition+8
+CurrentTileSize     equ CursorPosition+10
 VblankStatus        equ RAM_START+500
 soundIndex          equ RAM_START+506
 soundTimer          equ RAM_START+510
@@ -86,6 +92,7 @@ CleanUpTimers: Macro
 .end
 ENDM
 
+
 SetupControllers: Macro 
   FastPauseZ80
     move.b  #$40,(Ctrl_Port_1)   ; 1P control port
@@ -96,6 +103,7 @@ SetupControllers: Macro
 EntryPoint:
   TurnOffIRQ
   jsr initializeVDP 
+  SetWindowSize 0,$4
   ; Ram intializations 
   ; ===============================
   SetupControllers
@@ -111,12 +119,12 @@ EntryPoint:
   move.w #$ffff,(a0)+ 
   dbf d1,.loop1
   SetCursor 0,$80
-  move.w #12,(CurrentTileNo)
+  move.w #1,(CurrentTileNo)
   move.b #WAITING_FOR_VBLANK,(VblankStatus)
 ; ==================================
   ; copy initial tiles to VRAM by DMA 
   move.l #GraphicStack,(GraphicStackPointer) 
-  move.l #((tileDataEnd-tileData)/2),d1 ;
+  move.l #((tileDataEnd-tileData)),d1 ;
   move.l #tileData,d2 
   move.l #$0000,d3
   move.l #VRAMWrite,d4
@@ -125,11 +133,6 @@ EntryPoint:
   move.l #colors,d2
   move.l #$0000,d3 
   move.l #CRAMWrite,d4
-  jsr DMACopy
-  move.l #cursorData,d2 
-  move.l #((cursorDataEnd-cursorData)/2),d1
-  move.l #$0020,d3  
-  move.l #VRAMWrite,d4
   jsr DMACopy
   move.l #0,d0 
   lea vdp_control,a0 
@@ -158,7 +161,7 @@ EntryPoint:
   addq.l #1,d0
   and.w #$3ff,d0
   dbra d1,.loop2
-  
+  jsr changeScore 
   TurnOnIRQ
 
 mainLoop:
@@ -169,9 +172,9 @@ mainLoop:
   ; soundroutine here
   jsr clearSprites
   move.w (CurrentTileNo),d2 
-  move.w (CursorX),d0
-  move.w (CursorY),d1
-  move.w (CurrentTileSize),d3
+  move.w (PlayerX),d0
+  move.w (PlayerY),d1
+  move.w #%1111,d3
   jsr addSprite
   move.b #WAITING_FOR_VBLANK,VblankStatus
   jmp mainLoop
@@ -245,6 +248,26 @@ copyLettersToVRAM:
 copyTiles:
   rts
 
+scrollScreen:
+  move.w (ScrollPosition),d0 
+  writeToVRAMAddr $f400
+  move.w d0,(vdp_data)
+  addq.w #1,d0 
+  move.w d0,(ScrollPosition)
+  rts
+updateScoreWindow: 
+  move.w (currentScore),d0 
+  writeToVRAMAddr $d000
+  ; move both nibbles into the thing
+  move.w d0,d1
+  lsr.w #4,d0 
+  and.w #$000f,d0
+  add.w #$0b1,d0
+  and.w #$000f,d1
+  add.w #$0b1,d1
+  move.w d0,(vdp_data)
+  move.w d1,(vdp_data)
+  rts 
 handleTimers:
   lea TimerArray,a0 
   move.l #10,d1
@@ -259,8 +282,37 @@ handleTimers:
   dbra d1,.loop
   rts
 
+movePlayer: ; dynamic version with d0,d1 as x,y change
+  add.b d4,(PlayerXAccu) 
+  bcc .yChange
+  btst.l #15,d4 
+  beq .addX
+  subq.w #7,(PlayerX)
+  jmp .yChange
+.addX 
+  addq.w #7,(PlayerX)
+.yChange 
+  add.b d5,(PlayerYAccu) 
+  bcc .end 
+  btst.l #15,d5
+  beq .addY
+  subq.w #7,(PlayerY)
+  rts
+.addY
+  addq.w #7,(PlayerY)
+.end 
+  rts 
+
+changeScore:
+  move.l #10,d0
+  move.l (currentScore),d1 
+  abcd d0,d1
+  move.l d1,(currentScore)
+  rts
 
 inputHandler:
+  clr.l d4 
+  clr.l d5
   move.b RAM_START,d0
   move.b (EditingFlags),d1
   btst #0,d0
@@ -269,7 +321,7 @@ processUp:
   btst #Edit_Mode_CursorBit,d1
   bne changeTileUp
 moveUp:
-  sub.w #8,CursorY
+  move.w #-120,d5
   jmp processLeft
 changeTileUp:
   addq.w #1,(CurrentTileNo)
@@ -280,18 +332,18 @@ processDown:
   btst #Edit_Mode_CursorBit,d1
   bne changeTileDown
 moveDown:
-  add.w #8,CursorY
+  move.w #120,d5
   jmp processLeft
 changeTileDown:
   subq.w #1,(CurrentTileNo)
 processLeft:
   btst #2,d0 
   bne processRight
-  sub.w #8,CursorX
+  move.w #-120,d4
 processRight:
   btst #3,d0 
   bne processA
-  add.w #8,CursorX
+  move.w #120,d4
 processA:
   btst #4,d0 
   bne processB
@@ -320,6 +372,7 @@ processStart:
   eor #1,d2
   move.b d2,(EditingFlags)
 .end
+  jsr movePlayer
   move.b d0,PressedButtons
   rts 
 
@@ -431,12 +484,9 @@ VBlankInterrupt:
     ; handle sprite logic 
     jsr copySpriteTable
     jsr copyTilemap
-    writeToVRAMAddr $f400 
-    move.w (ScrollPosition),d0 
-    addq.w #1,d0 
-    move.w d0,(vdp_data)
-    move.w d0,(ScrollPosition)
+    jsr scrollScreen
     jsr handleTimers
+    jsr updateScoreWindow
   ;jsr handleGraphicStack
   movem.l (sp)+,d0-d7
   rte
@@ -464,10 +514,11 @@ lettersEnd:
 tile1:
   incbin "tile1.bin"
 colors:
-  incbin "color.bin"
+  incbin "palette.bin"
 colorsEnd:
 tileData:
-  incbin "eswatdrop.bin"
+  dc.l 0,0,0,0,0,0,0,0
+  incbin "sprite.bin"
 tileDataEnd:
 cursorData:
   move.w #0,d3
