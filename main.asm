@@ -15,6 +15,7 @@ EditingFlags        equ RAM_START+2
 ScrollPosition      equ RAM_START+6
 randomSeed          equ RAM_START+10
 currentScore        equ RAM_START+20
+currentScoreEnd     equ currentScore+5
 GraphicStack        equ RAM_START+100
 GraphicStackPointer equ RAM_START+104
 MainTimer           equ RAM_START+200
@@ -161,7 +162,8 @@ EntryPoint:
   addq.l #1,d0
   and.w #$3ff,d0
   dbra d1,.loop2
-  jsr changeScore 
+  move.w #$00,(currentScore) 
+  jsr changeScore
   TurnOnIRQ
 
 mainLoop:
@@ -177,6 +179,7 @@ mainLoop:
   move.w #%1111,d3
   jsr addSprite
   move.b #WAITING_FOR_VBLANK,VblankStatus
+  jsr changeScore
   jmp mainLoop
 
 setTile:
@@ -256,17 +259,22 @@ scrollScreen:
   move.w d0,(ScrollPosition)
   rts
 updateScoreWindow: 
-  move.w (currentScore),d0 
+  lea (vdp_data),a0
+  lea (currentScore),a1
   writeToVRAMAddr $d000
-  ; move both nibbles into the thing
-  move.w d0,d1
+.loop
+  move.b (a1)+,d0 
+  clr.l d1
+  move.b d0,d1
   lsr.w #4,d0 
   and.w #$000f,d0
   add.w #$0b1,d0
   and.w #$000f,d1
   add.w #$0b1,d1
-  move.w d0,(vdp_data)
-  move.w d1,(vdp_data)
+  move.w d0,(a0)
+  move.w d1,(a0)
+  cmpa.l #currentScoreEnd,a1
+  bne .loop 
   rts 
 handleTimers:
   lea TimerArray,a0 
@@ -304,10 +312,17 @@ movePlayer: ; dynamic version with d0,d1 as x,y change
   rts 
 
 changeScore:
-  move.l #10,d0
-  move.l (currentScore),d1 
-  abcd d0,d1
-  move.l d1,(currentScore)
+  move #0,ccr
+  move.l #$1234,d0 ; for values larger than a long (so effectivly decimal values with more than 8 digits) you'd need a memory based solution, but this should be fine unlikely that I need them 
+  lea currentScoreEnd,a0 
+  move.l #5,d2
+.loop
+  move.b -(a0),d1
+  abcd d0,d1 
+  ror.l #8,d0
+  and.l #$00ffffff,d0
+  move.b d1,(a0)
+  dbra d2,.loop ; technically could end when Xtend isn't set but we also have to check whether the added value is consumed so this is simpler 
   rts
 
 inputHandler:
