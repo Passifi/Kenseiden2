@@ -50,6 +50,16 @@ VIrqBIT       equ %00100000
 DMAEnableBit  equ %00010000 
 Cell30ModeBit equ %00001000 
 
+; TileAttributes  
+FlipTile_Horizontally equ $0800
+FlipTile_Vertically equ $1000
+TilePalette0        equ $0000 
+TilePalette1        equ $2000 
+TilePalette2        equ $4000 
+TilePalette3        equ $6000 
+TilePriority        equ $8000 
+
+
 string:
   dc.b "hello world!\0"
 strEnd:
@@ -153,7 +163,53 @@ copySpriteTable:
   jsr DMACopy
   rts
 
-setVRAMAddr:
+CornerBlock equ $11
+SingleLineBlock equ $12 
+TopLineBlock  equ $15
+MiddleBlock   equ $17
+createWindowframe: 
+  lea vdp_data,a0  
+  move.w #29,d1 
+  writeToVRAMAddr $d000 
+  move.w #(CornerBlock|TilePalette1),(a0)
+.loopTop 
+  move.w #(TopLineBlock|TilePalette1),(a0)
+  dbf d1,.loopTop
+  move.w #(CornerBlock|FlipTile_Horizontally|TilePalette1),(a0)
+  move.l #1,d4
+.middleBlockLoop
+  move.w #(SingleLineBlock|TilePalette1),(a0)
+  move.w #29,d1
+.middleLoop 
+  move.w #(MiddleBlock|TilePalette1),(a0)
+  dbf d1,.middleLoop
+  move.w #(SingleLineBlock|FlipTile_Horizontally|TilePalette1),(a0)
+  dbf d4,.middleBlockLoop
+  move.w #29,d1
+  move.w #(CornerBlock|FlipTile_Vertically|TilePalette1),(a0)
+.loopBottom 
+  move.w #(TopLineBlock|FlipTile_Vertically|TilePalette1),(a0)
+  dbf d1,.loopBottom
+  move.w #(CornerBlock|FlipTile_Vertically|FlipTile_Horizontally|TilePalette1),(a0)
+  rts
+writeString: ; srcAddr: a0, targetAddr: d0, length: d2, note that we presume VDP writes  
+  jsr setVRAMAddr
+  lea (vdp_data),a1
+  and.w #$00ff,d1 
+.loop 
+  move.b (a0)+,d1 
+  cmp.b #0,d1
+  beq .end
+  addq.b #1,d1
+  or.w #TilePalette1,d1
+  ; put some logic to add in tile data (palette) for now we presume palette 0 
+  move.w d1,(a1)
+  jmp .loop
+.end
+  rts 
+
+
+setVRAMAddr: ; address in d0 
   clr.l d1
   move.w d0,d1 
   and.w #$3fff,d0
@@ -228,7 +284,6 @@ addSprite:
   ble.s .skip
   cmp.w #SCREEN_H,d1
   bge.s .skip
-  
   lea (SpriteTable),a0 
   move.b (numOfSprites),d4 
   beq.s .first 

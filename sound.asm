@@ -1,4 +1,13 @@
-PSGPort equ $C00011 
+PSGPort  equ $C00011 
+FMBank1Addressport   equ $A04000
+FMBank1Dataport      equ $A04001
+FMBank2Addressport   equ $A04002
+FMBank2Dataport      equ $A04003
+
+; YM2612 Registers 
+
+KeyTriggerRegister   equ $28
+
 C3      equ	851
 CSharp3	equ 803
 D3      equ	758
@@ -15,6 +24,44 @@ B3      equ	450
 VolumeBit equ 0 
 PitchBit  equ 1 
 NoiseBit  equ 2 
+
+WriteFMRegisterBank1: Macro 
+  move.b #(\1),(FMBank1Addressport) 
+  move.b #(\2),(FMBank1Dataport) 
+ENDM
+WriteFMRegisterBank2: Macro 
+  move.b #(\1),(FMBank2Addressport) 
+  move.b #(\2),(FMBank2Dataport) 
+ENDM
+
+KeyOnOff: Macro 
+  WriteFMRegisterBank1 KeyTriggerRegister,(\1<<4|\2)
+ENDM
+
+SetAttack: Macro 
+  WriteFMRegisterBank1 $50+(\1*4+\2),\3 
+ENDM
+
+setFrequency: Macro 
+  WriteFMRegisterBank1 $A0+(\1),$32
+  WriteFMRegisterBank1 $A4+(\1),$ff 
+ENDM
+
+playFMNote:
+  ;move.w #$0100,$A11100  ; bus request 
+  setFrequency 0
+  nop
+  nop 
+  nop 
+  nop
+  SetAttack 0,0,12 
+  nop 
+  nop 
+  nop 
+  nop
+  KeyOnOff $f,0
+  rts 
+
 setVolume:  ; d1 attunation, d0 channel
   or.b #$90,d0 
   and.b #$0f,d1

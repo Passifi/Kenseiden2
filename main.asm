@@ -2,6 +2,7 @@
   include "system/cartridgeHeader.asm"
   include "graphics.asm"
   include "sound.asm"
+  include "variables.asm" 
 ; Ports 
 Ctrl_Port_1 equ $A10009
 Data_Port_1 equ $A10003
@@ -9,34 +10,6 @@ Z80Ram      equ $A00000  ; Where Z80 RAM starts
 Z80BusReq   equ $A11100  ; Z80 bus request line
 Z80Reset    equ $A11200  ; Z80 reset line
 
-RAM_START           equ $ff0000
-PressedButtons      equ RAM_START+1
-EditingFlags        equ RAM_START+2
-ScrollPosition      equ RAM_START+6
-randomSeed          equ RAM_START+10
-currentScore        equ RAM_START+20
-currentScoreEnd     equ currentScore+5
-GraphicStack        equ RAM_START+100
-GraphicStackPointer equ RAM_START+104
-MainTimer           equ RAM_START+200
-TimerArray          equ RAM_START+204 ;; consider always marking how large a memory block is and not just where it starts
-WaitTimer           equ TimerArray
-PressWait           equ $30
-PlayerPosition      equ RAM_START+300 
-PlayerXAccu         equ RAM_START+300
-PlayerYAccu         equ RAM_START+301
-PlayerX             equ PlayerPosition+2 
-PlayerY             equ PlayerPosition+4 
-CursorPosition      equ RAM_START+400
-CursorX             equ CursorPosition 
-CursorY             equ CursorPosition+4
-CurrentTileNo       equ CursorPosition+8
-CurrentTileSize     equ CursorPosition+10
-VblankStatus        equ RAM_START+500
-soundIndex          equ RAM_START+506
-soundTimer          equ RAM_START+510
-Tilemap             equ RAM_START+$1000
-TilemapEnd          equ Tilemap+64*28*2
 ; Macros
 ; constants 
 WAITING_FOR_VBLANK  equ 0 
@@ -53,7 +26,7 @@ FastPauseZ80: macro
 PauseZ80: Macro
   move.w #RequestBus,(Z80BusReq)
 .wait 
-  btst #BusReadyBit,(Z80BusReq)
+  btst.b #BusReadyBit,(Z80BusReq)
   bne.s .wait
   ENDM
 
@@ -93,7 +66,6 @@ CleanUpTimers: Macro
 .end
 ENDM
 
-
 SetupControllers: Macro 
   FastPauseZ80
     move.b  #$40,(Ctrl_Port_1)   ; 1P control port
@@ -112,8 +84,11 @@ EntryPoint:
   jsr clearCRAM
   jsr copyLettersToVRAM 
   jsr copyTiles
+  jsr createWindowframe 
   jsr clearRAM
   jsr fillRAM
+  move.w #200,(PlayerX) 
+  move.w #200,(PlayerY) 
   move.w #10,d1
   lea TimerArray,a0 
 .loop1
@@ -151,21 +126,27 @@ EntryPoint:
 .loop 
   move.l d1,(a1)
   dbra d1,.loop
-  move #0,d0 
-  move #5,d1 
-  lea Tilemap,a0 
-  move.l #(TilemapEnd-Tilemap),d1
-  move.l #$04aa3432,(randomSeed)
-  move.l #1,d0
-.loop2
-  move.w d0,(a0)+
-  addq.l #1,d0
-  and.w #$3ff,d0
-  dbra d1,.loop2
   move.w #$00,(currentScore) 
   jsr changeScore
-  TurnOnIRQ
+  lea scoreStr,a0 
+  move.w #(Window_Base_Address+68),d0
+  move.w #5,d2
+  
+  jsr writeString
 
+  FastPauseZ80
+  move.w #$100,(Z80Reset)
+  ResumeZ80
+  PauseZ80
+  move.b #$f3,d0 
+  move.l #$2000,d1
+  move.l #$A00000,a0
+.z80fillLoop  
+  move.b d0,(a0)+
+  dbra d1,.z80fillLoop
+  jsr playFMNote
+
+  TurnOnIRQ
 mainLoop:
   move.b VblankStatus,d0 
   cmp.b #VBLANK_OCCURED,d0 
@@ -258,19 +239,24 @@ scrollScreen:
   addq.w #1,d0 
   move.w d0,(ScrollPosition)
   rts
-updateScoreWindow: 
+
+Position_Zero_Digit equ $0b1
+Window_Base_Address equ $d000
+updateScoreWindow: ; touches a0,a1,d0,d1 
   lea (vdp_data),a0
   lea (currentScore),a1
-  writeToVRAMAddr $d000
+  writeToVRAMAddr (Window_Base_Address+68+12) ; intilaize to VRAM address of Window
 .loop
   move.b (a1)+,d0 
   clr.l d1
   move.b d0,d1
   lsr.w #4,d0 
   and.w #$000f,d0
-  add.w #$0b1,d0
+  add.w #Position_Zero_Digit,d0 ; $0bf being the position of 
   and.w #$000f,d1
-  add.w #$0b1,d1
+  add.w #Position_Zero_Digit,d1
+  or.w #TilePalette1,d0 
+  or.w #TilePalette1,d1 
   move.w d0,(a0)
   move.w d1,(a0)
   cmpa.l #currentScoreEnd,a1
@@ -290,28 +276,12 @@ handleTimers:
   dbra d1,.loop
   rts
 
-movePlayer: ; dynamic version with d0,d1 as x,y change
-  add.b d4,(PlayerXAccu) 
-  bcc .yChange
-  btst.l #15,d4 
-  beq .addX
-  subq.w #7,(PlayerX)
-  jmp .yChange
-.addX 
-  addq.w #7,(PlayerX)
-.yChange 
-  add.b d5,(PlayerYAccu) 
-  bcc .end 
-  btst.l #15,d5
-  beq .addY
-  subq.w #7,(PlayerY)
-  rts
-.addY
-  addq.w #7,(PlayerY)
-.end 
+movePlayer: ; dynamic version with d4,d5 as x,y change ; touches d4,5 
+  add.l d4,(PlayerXAccu) 
+  add.l d5,(PlayerYAccu) 
   rts 
 
-changeScore:
+changeScore: ; touches d0-d1, a0
   move #0,ccr
   move.l #$1234,d0 ; for values larger than a long (so effectivly decimal values with more than 8 digits) you'd need a memory based solution, but this should be fine unlikely that I need them 
   lea currentScoreEnd,a0 
@@ -325,6 +295,7 @@ changeScore:
   dbra d2,.loop ; technically could end when Xtend isn't set but we also have to check whether the added value is consumed so this is simpler 
   rts
 
+PlayerSpeed equ 120000
 inputHandler:
   clr.l d4 
   clr.l d5
@@ -336,7 +307,7 @@ processUp:
   btst #Edit_Mode_CursorBit,d1
   bne changeTileUp
 moveUp:
-  move.w #-120,d5
+  move.l #(-1*PlayerSpeed),d5
   jmp processLeft
 changeTileUp:
   addq.w #1,(CurrentTileNo)
@@ -347,18 +318,18 @@ processDown:
   btst #Edit_Mode_CursorBit,d1
   bne changeTileDown
 moveDown:
-  move.w #120,d5
+  move.l #PlayerSpeed,d5
   jmp processLeft
 changeTileDown:
   subq.w #1,(CurrentTileNo)
 processLeft:
   btst #2,d0 
   bne processRight
-  move.w #-120,d4
+  move.l #-PlayerSpeed,d4
 processRight:
   btst #3,d0 
   bne processA
-  move.w #120,d4
+  move.l #PlayerSpeed,d4
 processA:
   btst #4,d0 
   bne processB
@@ -499,7 +470,6 @@ VBlankInterrupt:
     ; handle sprite logic 
     jsr copySpriteTable
     jsr copyTilemap
-    jsr scrollScreen
     jsr handleTimers
     jsr updateScoreWindow
   ;jsr handleGraphicStack
@@ -530,10 +500,14 @@ tile1:
   incbin "tile1.bin"
 colors:
   incbin "palette.bin"
+  incbin "frameTiles_palette.bin"
+  incbin "enemy_palette.bin"
 colorsEnd:
 tileData:
   dc.l 0,0,0,0,0,0,0,0
   incbin "sprite.bin"
+  incbin "frameTiles.bin"
+  incbin "enemy.bin"
 tileDataEnd:
 cursorData:
   move.w #0,d3
@@ -560,7 +534,9 @@ sounddata:
 
   dc.b 2,0,0,0
 errorStr:
-  dc.b "something went wrong\0"
+  dc.b "something went wrong",0
+scoreStr: 
+  dc.b "score",0
 jumpTable:
   dc.l vramCopy
   dc.l cramCopy
