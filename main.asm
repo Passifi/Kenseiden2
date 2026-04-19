@@ -336,10 +336,10 @@ processA:
   btst #4,d0 
   bne processB
   movem.l d0-d7,-(sp)
-  move.w #120,d0 
-  move.w #120,d1 
-  move.w #$1223,d2 
-  move.w #120,d3
+  move.w (PlayerX),d0 
+  move.w (PlayerY),d1 
+  move.w #0,d2 
+  move.w #1,d3
 
   jsr addBullet
 
