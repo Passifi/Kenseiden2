@@ -3,7 +3,8 @@
   include "graphics.asm"
   include "sound.asm"
   include "variables.asm" 
-; Ports 
+  include "gamelogic.asm"; 
+Ports 
 Ctrl_Port_1 equ $A10009
 Data_Port_1 equ $A10003
 Z80Ram      equ $A00000  ; Where Z80 RAM starts
@@ -145,12 +146,13 @@ EntryPoint:
   move.b d0,(a0)+
   dbra d1,.z80fillLoop
   jsr playFMNote
-
+  jsr initBulletArray 
   TurnOnIRQ
 mainLoop:
   move.b VblankStatus,d0 
   cmp.b #VBLANK_OCCURED,d0 
   bne mainLoop
+  jsr processBullets
   jsr inputHandler 
   ; soundroutine here
   jsr clearSprites
@@ -333,7 +335,15 @@ processRight:
 processA:
   btst #4,d0 
   bne processB
-  jsr setTile
+  movem.l d0-d7,-(sp)
+  move.w #120,d0 
+  move.w #120,d1 
+  move.w #$1223,d2 
+  move.w #120,d3
+
+  jsr addBullet
+
+  movem.l (sp)+,d0-d7
 processB:
   btst #5,d0 
   bne processC 

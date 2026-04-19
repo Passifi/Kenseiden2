@@ -51,8 +51,8 @@ playFMNote:
   ;move.w #$0100,$A11100  ; bus request 
   setFrequency 0
   nop
-  nop 
-  nop 
+  nop
+  nop
   nop
   SetAttack 0,0,12 
   nop 
@@ -60,7 +60,7 @@ playFMNote:
   nop 
   nop
   KeyOnOff $f,0
-  rts 
+  rts
 
 setVolume:  ; d1 attunation, d0 channel
   or.b #$90,d0 
@@ -128,8 +128,8 @@ soundRoutine:
   cmp.b #0,d6 
   beq .loop 
   move.b d6,(soundTimer)
-.end  
-  rts 
+.end
+  rts
 
 
 

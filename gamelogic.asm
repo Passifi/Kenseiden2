@@ -1,5 +1,8 @@
-BulletArray equ $FF004000
-BulletIndex equ $FF003ffA
+BulletArraySize equ $20
+BulletArrayPositions equ $ff4000
+BulletArrayVelocities equ $ff4000+BulletArraySize*2
+
+BulletIndex equ $ff3ffA
 BulletArrayLength equ $10
 
 BulletDataSize equ 10
@@ -9,39 +12,36 @@ initBulletArray:
   rts 
 
 addBullet: ;d0,d1,d2,d3,d4 -> x,y,xVel,yVel,type
-  lea BulletArray,a0  
   move.w (BulletIndex),d5 
-  move.w d5,d6 
-  lsl.w #3,d5 
-  lsl.w #2,d6
-  add.w d5,d6
-  adda.w d6,a0
-  move.w d0,(a0)+
-  move.w d1,(a0)+
-  move.w d2,(a0)+
-  move.w d3,(a0)+
-  move.w d4,(a0)+
-  addq.w #1,(BulletIndex) 
+  cmp.w #BulletArraySize-1,d5
+  bge .end 
+  lsl.w #1,d5
+  lea BulletArrayVelocities,a0 
+  lea BulletArrayPositions,a1
+  adda.l d5,a0
+  adda.l d5,a1
+  move.w d0,(a0)+ 
+  move.w d1,(a0) 
+  move.w d2,(a1)+ 
+  move.w d3,(a1) 
+  addq.w #1,(BulletIndex)
+.end 
   rts 
 
 processBullets:
-  lea BulletArray,a0
-  lea BulletIndex,a2
-  move.w #0,d5
-.loop 
-  movea.l a0,a1
-  move.w (a0)+,d0
-  move.w (a0)+,d1
-  move.w (a0)+,d2
-  move.w (a0)+,d3
-  adda.l #2,a0
-  add.w d2,d0 
-  add.w d3,d1
-  move.w d0,(a1)+
-  move.w d1,(a1)
-  addq.w #1,d5
-  cmp.w (a2),d5
-  blt .loop
+  move.w (BulletIndex),d3
+  lea (BulletArrayPositions),a0
+  lea (BulletArrayVelocities),a1
+.loop
+  move.w (a0),d0 
+  move.w (a1)+,d1
+  add.w d1,d0
+  move.w d0,(a0)+
+  move.w (a0),d0 
+  move.w (a1)+,d1
+  add.w d1,d0
+  move.w d0,(a0)+
+  dbf d3,.loop
   rts 
 
 removeBullet:
