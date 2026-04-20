@@ -8,7 +8,7 @@ CRAMWrite   equ $C000
 
 SCREEN_H equ 320 
 SCREEN_W equ 256 
-numOfSprites equ 64
+numOfSprites equ RAMStart+64
 vdp_control equ $C00004
 vdp_data    equ $C00000
 SpriteSize equ 16
@@ -276,8 +276,17 @@ clearSprites:
 ; move.w (SpriteY),d1 
 ; move.w (SpriteTile),d2 
 ; move.w (SpriteSize),d3
-
-addSprite:
+spriteComplete: 
+  lea (SpriteTable),a0 
+  clr d0 
+  move.b (numOfSprites),d0
+  ; multiply index by 8 + 3 
+  lsl.w #3,d0 
+  addq.w #3,d0
+  lea (a0,d0.w),a0
+  move.b #0,(a0)
+  rts 
+addSprite: ; touches d0-d5, a0 x: d0, y: d1 
   cmp.w #SCREEN_W,d0
   bge.s .skip
   cmp.w #-32,d0
@@ -295,13 +304,13 @@ addSprite:
   lea (a0,d5.w),a0
   move.b d4,-5(a0)
 .first
+  addq.b #1,d4 
   add.w #128,d0
   move.w d1,(a0)+
   move.b d3,(a0)+
-  move.b #0,(a0)+
+  move.b d4,(a0)+
   move.w d2,(a0)+
   move.w d0,(a0)+
-  addq.b #1,d4 
   move.b d4,(numOfSprites)
 .skip
   rts

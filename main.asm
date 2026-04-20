@@ -20,6 +20,7 @@ RequestBus          equ $100
 ReleaseBus          equ 0
 BusReadyBit         equ 0
 Edit_Mode_CursorBit    equ 0
+BulletSpriteNo         equ $21
 FastPauseZ80: macro
   move.w #RequestBus,(Z80BusReq) 
   endm
@@ -147,6 +148,7 @@ EntryPoint:
   dbra d1,.z80fillLoop
   jsr playFMNote
   jsr initBulletArray 
+  move.l #33,(randomSeed)
   TurnOnIRQ
 mainLoop:
   move.b VblankStatus,d0 
@@ -161,9 +163,28 @@ mainLoop:
   move.w (PlayerY),d1
   move.w #%1111,d3
   jsr addSprite
+  jsr addBulletSprites
   move.b #WAITING_FOR_VBLANK,VblankStatus
   jsr changeScore
   jmp mainLoop
+
+addBulletSprites: 
+  lea BulletArrayPositions,a1 
+  move.w (BulletIndex),d6
+  cmp #0,d6 
+  ble .end
+  subq.w #1,d6 
+.loop
+  move.w #BulletSpriteNo,d2
+  move.w #%0101,d3
+  move.w (a1)+,d0
+  move.w (a1)+,d1
+  lsr.w #4,d0
+  lsr.w #4,d1
+  jsr addSprite
+  dbf d6,.loop
+.end
+  rts 
 
 setTile:
   movem.l d0-d7,-(a7) 
@@ -338,9 +359,12 @@ processA:
   movem.l d0-d7,-(sp)
   move.w (PlayerX),d0 
   move.w (PlayerY),d1 
-  move.w #0,d2 
-  move.w #1,d3
-
+  add.w #200,d0
+  add.w #200,d1 
+  lsl.w #4,d0
+  lsl.w #4,d1
+  move.w #12,d2
+  move.w #0,d3
   jsr addBullet
 
   movem.l (sp)+,d0-d7
