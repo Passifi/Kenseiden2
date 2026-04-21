@@ -88,7 +88,7 @@ EntryPoint:
   jsr copyTiles
   jsr createWindowframe 
   jsr clearRAM
-  jsr fillRAM
+  ;jsr fillRAM
   move.w #200,(PlayerX) 
   move.w #200,(PlayerY) 
   move.w #10,d1
@@ -113,29 +113,12 @@ EntryPoint:
   move.l #CRAMWrite,d4
   jsr DMACopy
   move.l #0,d0 
-  lea vdp_control,a0 
-  lea vdp_data,a1
-  move.l #$c000,d0 
-  move.l d0,d1 
-  lsr.l #2,d1 
-  or.w VRAMWrite,d1 
-  move.w d1,(a0)
-  and.w #$c000,d0 
-  lsr.l #7,d0
-  lsr.l #7,d0
-  move.w d0,(a0)
-  move.l #(30*40),d1 
-.loop 
-  move.l d1,(a1)
-  dbra d1,.loop
   move.w #$00,(currentScore) 
   jsr changeScore
   lea scoreStr,a0 
   move.w #(Window_Base_Address+68),d0
   move.w #5,d2
-  
   jsr writeString
-
   FastPauseZ80
   move.w #$100,(Z80Reset)
   ResumeZ80
@@ -149,6 +132,7 @@ EntryPoint:
   jsr playFMNote
   jsr initBulletArray 
   move.l #33,(randomSeed)
+  ResumeZ80
   TurnOnIRQ
 mainLoop:
   move.b VblankStatus,d0 
@@ -359,8 +343,8 @@ processA:
   movem.l d0-d7,-(sp)
   move.w (PlayerX),d0 
   move.w (PlayerY),d1 
-  add.w #200,d0
-  add.w #200,d1 
+  ;add.w #200,d0
+  ;add.w #200,d1 
   lsl.w #4,d0
   lsl.w #4,d1
   move.w #12,d2

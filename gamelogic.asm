@@ -1,11 +1,24 @@
 BulletArraySize equ $20
 BulletArrayPositions equ $ff4000
 BulletArrayVelocities equ $ff4000+BulletArraySize*4
-
+BulletsToRemoveStack  equ BulletArrayVelocities+BulletArraySize*4+20
+BulletStackPointer    equ BulletsToRemoveStack+8
 BulletIndex equ $ff3ffA
 BulletArrayLength equ $10
 
 BulletDataSize equ 10
+
+pushBullet: Macro 
+  lea (BulletStackPointer),a5
+  move.b d3,-(a5) ; presumes it's being used inside the bullet processing routine where d3 => current index
+  move.l a5,(BulletStackPointer)
+ENDM
+
+popBullet: Macro 
+  lea (BulletStackPointer),a0
+  move.b (a0)+,d6 ; currently not bveing used just to remind myself of the clean implementation where a value gets retrieved
+  move.l a0,(BulletStackPointer)
+ENDM
 
 initBulletArray:
   move.w #0,(BulletIndex)
@@ -36,15 +49,52 @@ processBullets:
   move.w (a0),d0 
   move.w (a1)+,d1
   add.w d1,d0
+  cmp #$600,d0
+  blt .next
+  pushBullet
+.next
   move.w d0,(a0)+
   move.w (a0),d0 
   move.w (a1)+,d1
   add.w d1,d0
+  cmp #$600,d0
+  blt .next2
+  pushBullet
+.next2
   move.w d0,(a0)+
   dbf d3,.loop
   rts 
 
-removeBullet:
+compactBulletArray:
+  lea (BulletStackPointer),a0 
+.loop 
+  cmpa.l BulletsToRemoveStack,a0
+  ble .end 
+  move.b (a0)+,d3 
+  jsr removeBullet
+  jmp .loop
+.end
+  rts 
+
+removeBullet: ; index in d3 a2, 
+  clr.l d4 
+  move.w (BulletIndex),d4
+  lea (BulletArrayPositions),a2 
+  lea (BulletArrayVelocities),a3
+  move a2,a5 
+  move a3,a6
+  lsl.w #2,d4 
+  adda.l d4,a2 
+  adda.l d4,a3
+  move.w (a2),d5
+  move.w (a3),d6
+  clr.l d4
+  move.w d3,d4
+  lsl.w #2,d4 
+  adda.l d4,a5 
+  adda.l d4,a6
+  move.w d5,(a5)
+  move.w d5,(a6)
   rts 
 
 
