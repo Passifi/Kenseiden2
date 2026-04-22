@@ -139,6 +139,7 @@ mainLoop:
   cmp.b #VBLANK_OCCURED,d0 
   bne mainLoop
   jsr processBullets
+  jsr compactBulletArray
   jsr inputHandler 
   ; soundroutine here
   jsr clearSprites
