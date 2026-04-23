@@ -487,6 +487,7 @@ VBlankInterrupt:
     jsr readCTRL
     move.b #VBLANK_OCCURED,VblankStatus
     ; handle sprite logic 
+    jsr spriteComplete
     jsr copySpriteTable
     jsr copyTilemap
     jsr handleTimers

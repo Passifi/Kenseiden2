@@ -156,11 +156,16 @@ transferTiledata:
 
 copySpriteTable:
   ; for now copy the entire possible size of the sprite table 
-  move.l #$300,d1 
+  eor d1,d1 
+  move.b (numOfSprites),d1
+  cmp #0,d1 
+  beq .noSprites
+  lsl.l #3,d1
   move.l #SpriteTable,d2 
   move.l #SpriteTableVDP_Base,d3 
   move.l #VRAMWrite,d4
   jsr DMACopy
+.noSprites
   rts
 
 CornerBlock equ $11
@@ -280,6 +285,10 @@ spriteComplete:
   lea (SpriteTable),a0 
   clr d0 
   move.b (numOfSprites),d0
+  cmp #0,d0
+  beq .initial
+  subq.b #1,d0
+.initial 
   ; multiply index by 8 + 3 
   lsl.w #3,d0 
   addq.w #3,d0
