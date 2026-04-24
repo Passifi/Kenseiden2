@@ -11,7 +11,7 @@ BulletDataSize equ 10
 
 pushBullet: Macro 
   move.l BulletStackPointer,a5
-  move.b d3,-(a5) ; presumes it's being used inside the bullet processing routine where d3 => current index
+  move.b d6,-(a5) ; presumes it's being used inside the bullet processing routine where d3 => current index
   move.l a5,(BulletStackPointer)
 ENDM
 
@@ -28,8 +28,8 @@ initBulletArray:
 
 addBullet: ;d0,d1,d2,d3,d4 -> x,y,xVel,yVel,type
   move.w (BulletIndex),d5 
-  cmp.w #BulletArraySize-1,d5
-  bge .end 
+  cmp.w #BulletArraySize,d5
+  bge .end
   lsl.w #2,d5
   lea BulletArrayPositions,a0 
   lea BulletArrayVelocities,a1
@@ -44,8 +44,9 @@ addBullet: ;d0,d1,d2,d3,d4 -> x,y,xVel,yVel,type
   rts 
 
 processBullets:
+  move.w #0,d6
   move.w (BulletIndex),d3
-  cmp #0,d3 
+  cmp.w #0,d3 
   ble .end
   lea (BulletArrayPositions),a0
   lea (BulletArrayVelocities),a1
@@ -70,12 +71,14 @@ processBullets:
 .next2
   move.w d0,(a0)+
 .continue
+  addq.l #1,d6
   dbf d3,.loop
 .end
   rts
 
 compactBulletArray:
   movea.l BulletStackPointer,a0 
+  clr d3
 .loop 
   cmpa.l #BulletsToRemoveStack,a0
   bge .end 
@@ -89,6 +92,10 @@ compactBulletArray:
 removeBullet: ; index in d3 a2, 
   clr.l d4 
   move.w (BulletIndex),d4
+  cmp.w #0,d4
+  ble.w .end
+  subq.w #1,d4
+  move.w d4,(BulletIndex)
   lea (BulletArrayPositions),a2 
   lea (BulletArrayVelocities),a3
   move a2,a5 
@@ -96,16 +103,16 @@ removeBullet: ; index in d3 a2,
   lsl.w #2,d4 
   adda.l d4,a2 
   adda.l d4,a3
-  move.w (a2),d5
-  move.w (a3),d6
+  move.l (a2),d5
+  move.l (a3),d6
   clr.l d4
   move.w d3,d4
   lsl.w #2,d4 
   adda.l d4,a5 
   adda.l d4,a6
-  move.w d5,(a5)
-  move.w d5,(a6)
-  subq.w #1,(BulletIndex)
+  move.l d5,(a5)
+  move.l d5,(a6)
+.end 
   rts
 
 
