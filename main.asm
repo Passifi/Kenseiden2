@@ -319,7 +319,7 @@ moveUp:
   jmp processLeft
 changeTileUp:
   addq.w #1,(CurrentTileNo)
-  jmp processStart
+  jmp processLeft
 processDown:
   btst #1,d0
   bne processLeft
@@ -341,17 +341,18 @@ processRight:
 processA:
   btst #4,d0 
   bne processB
+  ; check cooldown
+  move.b (PressedButtons),d3  
+  btst #4,d3 
+  beq processB
   movem.l d0-d7,-(sp)
-  move.w (PlayerX),d0 
-  move.w (PlayerY),d1 
-  ;add.w #200,d0
-  ;add.w #200,d1 
-  lsl.w #4,d0
-  lsl.w #4,d1
-  move.w #12,d2
-  move.w #0,d3
-  jsr addBullet
-
+    move.w (PlayerX),d0 
+    move.w (PlayerY),d1 
+    lsl.w #4,d0
+    lsl.w #4,d1
+    move.w #12,d2
+    move.w #0,d3
+    jsr addBullet
   movem.l (sp)+,d0-d7
 processB:
   btst #5,d0 

@@ -16,7 +16,7 @@ pushBullet: Macro
 ENDM
 
 popBullet: Macro 
-  movea.l BulletStackPointer,a0
+  move.l BulletStackPointer,a0
   move.b (a0)+,d6 ; currently not bveing used just to remind myself of the clean implementation where a value gets retrieved
   move.l a0,(BulletStackPointer)
 ENDM
@@ -57,8 +57,11 @@ processBullets:
   cmp #$1400,d0
   blt .next
   pushBullet
-  adda.w #4,a0
-  adda.w #2,a1
+  move.w #0,(a0)+
+  move.w #0,(a0)+
+  suba.l #2,a1
+  move.w #0,(a1)+
+  move.w #0,(a1)+
   jmp .continue
 .next
   move.w d0,(a0)+
@@ -67,7 +70,7 @@ processBullets:
   add.w d1,d0
   cmp #$1400,d0
   blt .next2
-  pushBullet
+  ;pushBullet
 .next2
   move.w d0,(a0)+
 .continue
@@ -77,7 +80,7 @@ processBullets:
   rts
 
 compactBulletArray:
-  movea.l BulletStackPointer,a0 
+  move.l BulletStackPointer,a0 
   clr d3
 .loop 
   cmpa.l #BulletsToRemoveStack,a0
@@ -98,8 +101,8 @@ removeBullet: ; index in d3 a2,
   move.w d4,(BulletIndex)
   lea (BulletArrayPositions),a2 
   lea (BulletArrayVelocities),a3
-  move a2,a5 
-  move a3,a6
+  move.l a2,a5 
+  move.l a3,a6
   lsl.w #2,d4 
   adda.l d4,a2 
   adda.l d4,a3
@@ -111,7 +114,7 @@ removeBullet: ; index in d3 a2,
   adda.l d4,a5 
   adda.l d4,a6
   move.l d5,(a5)
-  move.l d5,(a6)
+  move.l d6,(a6)
 .end 
   rts
 
