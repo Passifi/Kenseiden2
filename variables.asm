@@ -5,6 +5,9 @@ ScrollPosition      equ RAM_START+6
 randomSeed          equ RAM_START+10
 currentScore        equ RAM_START+20
 currentScoreEnd     equ currentScore+5
+shotDirection       equ currentScoreEnd+11
+shotDirectionX      equ shotDirection
+shotDirectionY      equ shotDirection+2
 GraphicStack        equ RAM_START+100
 GraphicStackPointer equ RAM_START+104
 MainTimer           equ RAM_START+200

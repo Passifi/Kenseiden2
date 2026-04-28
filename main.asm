@@ -115,6 +115,8 @@ EntryPoint:
   move.l #0,d0 
   move.w #$00,(currentScore) 
   jsr changeScore
+  move.w #120,shotDirectionX 
+  move.w #120,shotDirectionY 
   lea scoreStr,a0 
   move.w #(Window_Base_Address+68),d0
   move.w #5,d2
@@ -315,6 +317,8 @@ processUp:
   btst #Edit_Mode_CursorBit,d1
   bne changeTileUp
 moveUp:
+  move.w #0,(shotDirectionX)
+  move.w #-120,(shotDirectionY) 
   move.l #(-1*PlayerSpeed),d5
   jmp processLeft
 changeTileUp:
@@ -326,17 +330,23 @@ processDown:
   btst #Edit_Mode_CursorBit,d1
   bne changeTileDown
 moveDown:
+  move.w #0,(shotDirectionX)
   move.l #PlayerSpeed,d5
+  move.w #120,(shotDirectionY)
   jmp processLeft
 changeTileDown:
   subq.w #1,(CurrentTileNo)
 processLeft:
   btst #2,d0 
   bne processRight
+  move.w #0,(shotDirectionY)
+  move.w #-120,(shotDirectionX)
   move.l #-PlayerSpeed,d4
 processRight:
   btst #3,d0 
   bne processA
+  move.w #0,(shotDirectionY)
+  move.w #120,(shotDirectionX)
   move.l #PlayerSpeed,d4
 processA:
   btst #4,d0 
@@ -350,8 +360,8 @@ processA:
     move.w (PlayerY),d1 
     lsl.w #4,d0
     lsl.w #4,d1
-    move.w #12,d2
-    move.w #0,d3
+    move.w (shotDirectionX),d2
+    move.w (shotDirectionY),d3
     jsr addBullet
   movem.l (sp)+,d0-d7
 processB:
