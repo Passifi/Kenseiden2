@@ -356,6 +356,7 @@ processA:
   btst #4,d3 
   beq processB
   movem.l d0-d7,-(sp)
+    clr.l d5
     move.w (PlayerX),d0 
     move.w (PlayerY),d1 
     lsl.w #4,d0
