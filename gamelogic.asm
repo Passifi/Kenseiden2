@@ -54,8 +54,11 @@ processBullets:
   move.w (a0),d0 
   move.w (a1)+,d1
   add.w d1,d0
-  cmp #$1400,d0
-  blt .next
+  cmp.w #$1320,d0
+  bhi .removeonX
+  cmp.w #$00,d0 
+  bge .next
+.removeonX
   pushBullet
   move.w #0,(a0)+
   move.w #0,(a0)+
@@ -68,9 +71,12 @@ processBullets:
   move.w (a0),d0 
   move.w (a1)+,d1
   add.w d1,d0
-  cmp #$1400,d0
-  blt .next2
-  ;pushBullet
+  cmp.w #$1320,d0
+  bhi .removeOnY
+  cmp.w #$0000,d0 
+  bge .next2
+.removeOnY
+  pushBullet
 .next2
   move.w d0,(a0)+
 .continue
