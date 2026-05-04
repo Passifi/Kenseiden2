@@ -1,13 +1,16 @@
 BulletArraySize equ $20
+BulletIndex equ $ff3ffA
 BulletArrayPositions equ $ff4000
 BulletArrayVelocities equ $ff4000+BulletArraySize*4
 BulletStackLimit      equ BulletArrayVelocities+BulletArraySize*4
 BulletsToRemoveStack  equ BulletArrayVelocities+BulletArraySize*4+20
 BulletStackPointer    equ BulletsToRemoveStack+8
-BulletIndex equ $ff3ffA
 BulletArrayLength equ $10
 
 BulletDataSize equ 10
+
+MouseIndex equ $ff4ffa
+MouseArray equ $ff5000
 
 pushBullet: Macro 
   move.l BulletStackPointer,a5
@@ -20,6 +23,12 @@ popBullet: Macro
   move.b (a0)+,d6 ; currently not bveing used just to remind myself of the clean implementation where a value gets retrieved
   move.l a0,(BulletStackPointer)
 ENDM
+
+initMouseArray:
+  move.w #0,(MouseIndex)
+  move.w #$800,MouseArray
+  move.w #$1000,MouseArray+2
+  rts
 
 initBulletArray:
   move.w #0,(BulletIndex)

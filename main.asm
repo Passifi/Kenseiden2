@@ -21,6 +21,7 @@ ReleaseBus          equ 0
 BusReadyBit         equ 0
 Edit_Mode_CursorBit    equ 0
 BulletSpriteNo         equ $21
+MouseSpriteTileNo     equ $25
 FastPauseZ80: macro
   move.w #RequestBus,(Z80BusReq) 
   endm
@@ -133,6 +134,7 @@ EntryPoint:
   dbra d1,.z80fillLoop
   jsr playFMNote
   jsr initBulletArray 
+  jsr initMouseArray 
   move.l #33,(randomSeed)
   ResumeZ80
   TurnOnIRQ
@@ -151,6 +153,7 @@ mainLoop:
   move.w #%1111,d3
   jsr addSprite
   jsr addBulletSprites
+  jsr addMouseSprites
   move.b #WAITING_FOR_VBLANK,VblankStatus
   jsr changeScore
   jmp mainLoop
@@ -171,6 +174,17 @@ addBulletSprites:
   jsr addSprite
   dbf d6,.loop
 .end
+  rts 
+
+addMouseSprites:
+  lea  MouseArray,a1
+  move.w (a1)+,d0 
+  move.w (a1)+,d1
+  lsr.w #4,d0 
+  lsr.w #4,d1 
+  move.w #MouseSpriteTileNo,d2
+  move.w #%0101,d3
+  jsr addSprite
   rts 
 
 setTile:
@@ -534,12 +548,14 @@ colors:
   incbin "palette.bin"
   incbin "frameTiles_palette.bin"
   incbin "enemy_palette.bin"
+  incbin "mouse_palette.bin"
 colorsEnd:
 tileData:
   dc.l 0,0,0,0,0,0,0,0
   incbin "sprite.bin"
   incbin "frameTiles.bin"
   incbin "enemy.bin"
+  incbin "mouse.bin"
 tileDataEnd:
 cursorData:
   move.w #0,d3
