@@ -35,6 +35,17 @@ initBulletArray:
   move.l #BulletsToRemoveStack,(BulletStackPointer)
   rts
 
+addMouse: ;d0,d1 -> x,y
+  lea MouseArray,a0 
+  clr.l d3
+  move.w (MouseIndex),d3
+  lsl.w #2,d3
+  move.w d0,(0,a0,d3)
+  move.w d1,(2,a0,d3)
+  addq.w #1,d3 
+  move.w d3,(MouseIndex)
+  rts 
+
 addBullet: ;d0,d1,d2,d3,d4 -> x,y,xVel,yVel,type
   move.w (BulletIndex),d5 
   cmp.w #BulletArraySize,d5

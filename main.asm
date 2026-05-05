@@ -11,7 +11,7 @@ Z80Ram      equ $A00000  ; Where Z80 RAM starts
 Z80BusReq   equ $A11100  ; Z80 bus request line
 Z80Reset    equ $A11200  ; Z80 reset line
 
-; Macros
+; n?Macros
 ; constants 
 WAITING_FOR_VBLANK  equ 0 
 VBLANK_OCCURED      equ 1
@@ -126,17 +126,17 @@ EntryPoint:
   move.w #$100,(Z80Reset)
   ResumeZ80
   PauseZ80
-  move.b #$f3,d0 
-  move.l #$2000,d1
-  move.l #$A00000,a0
-.z80fillLoop  
-  move.b d0,(a0)+
-  dbra d1,.z80fillLoop
   jsr playFMNote
   jsr initBulletArray 
   jsr initMouseArray 
   move.l #33,(randomSeed)
   ResumeZ80
+  move.w #$1000,d0
+  move.w #$1000,d1
+  jsr addMouse
+  move.w #$1200,d0
+  move.w #$1200,d1
+  jsr addMouse
   TurnOnIRQ
 mainLoop:
   move.b VblankStatus,d0 
@@ -499,7 +499,7 @@ rng: ; returns a random value in d0
   rts
 HBlankInterrupt:
   ;DMACopyVRAM 1000,$0000,$0000 
-  rte 
+  rte
 
 copyTilemap:
   move.l #(TilemapEnd-Tilemap),d1 
