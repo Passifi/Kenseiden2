@@ -12,6 +12,12 @@ BulletDataSize equ 10
 MouseIndex equ $ff4ffa
 MouseArray equ $ff5000
 
+MouseX equ 0 
+MouseY equ 2 
+MouseVelocityX equ 4
+MouseVelocityY equ 6
+
+MouseSize equ MouseX + MouseY + MouseVelocityX + MouseVelocityY
 pushBullet: Macro 
   move.l BulletStackPointer,a5
   move.b d6,-(a5) ; presumes it's being used inside the bullet processing routine where d3 => current index
@@ -26,8 +32,6 @@ ENDM
 
 initMouseArray:
   move.w #0,(MouseIndex)
-  move.w #$800,MouseArray
-  move.w #$1000,MouseArray+2
   rts
 
 initBulletArray:
@@ -39,12 +43,31 @@ addMouse: ;d0,d1 -> x,y
   lea MouseArray,a0 
   clr.l d3
   move.w (MouseIndex),d3
-  lsl.w #2,d3
-  move.w d0,(0,a0,d3)
-  move.w d1,(2,a0,d3)
-  addq.w #1,d3 
-  move.w d3,(MouseIndex)
-  rts 
+  lsl.w #3,d3
+  move.w d0,(MouseX,a0,d3)
+  move.w d1,(MouseY,a0,d3)
+  move.w #15,(MouseVelocityX,a0,d3)
+  move.w #15,(MouseVelocityY,a0,d3)
+  addq.w #1,(MouseIndex)
+  rts
+moveMouses: 
+  lea MouseArray,a0
+  lea MouseIndex,a1
+  clr.l d3
+  move.w #0,d5
+.loop
+  move.w d5,d3
+  lsl.w #4,d3
+  move.w (MouseX,a0,d3),d0
+  move.w (MouseY,a0,d3),d1
+  add.w (MouseVelocityX,a0,d3),d0
+  add.w (MouseVelocityY,a0,d3),d1
+  move.w d0,(MouseX,a0,d3)
+  move.w d1,(MouseY,a0,d3)
+  addq.w #1,d5
+  cmp.w (a1),d5
+  blt .loop
+  rts
 
 addBullet: ;d0,d1,d2,d3,d4 -> x,y,xVel,yVel,type
   move.w (BulletIndex),d5 
@@ -55,13 +78,13 @@ addBullet: ;d0,d1,d2,d3,d4 -> x,y,xVel,yVel,type
   lea BulletArrayVelocities,a1
   adda.l d5,a0
   adda.l d5,a1
-  move.w d0,(a0)+ 
-  move.w d1,(a0) 
-  move.w d2,(a1)+ 
-  move.w d3,(a1) 
+  move.w d0,(a0)+
+  move.w d1,(a0)
+  move.w d2,(a1)+
+  move.w d3,(a1)
   addq.w #1,(BulletIndex)
-.end 
-  rts 
+.end
+  rts
 
 processBullets:
   move.w #0,d6

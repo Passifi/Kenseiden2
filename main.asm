@@ -131,11 +131,11 @@ EntryPoint:
   jsr initMouseArray 
   move.l #33,(randomSeed)
   ResumeZ80
-  move.w #$1000,d0
-  move.w #$1000,d1
+  move.w #$800,d0
+  move.w #$800,d1
   jsr addMouse
-  move.w #$1200,d0
-  move.w #$1200,d1
+  move.w #$900,d0
+  move.w #$900,d1
   jsr addMouse
   TurnOnIRQ
 mainLoop:
@@ -144,6 +144,7 @@ mainLoop:
   bne mainLoop
   jsr processBullets
   jsr compactBulletArray
+  jsr moveMouses
   jsr inputHandler 
   ; soundroutine here
   jsr clearSprites
