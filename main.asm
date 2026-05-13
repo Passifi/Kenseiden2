@@ -22,6 +22,8 @@ BusReadyBit         equ 0
 Edit_Mode_CursorBit    equ 0
 BulletSpriteNo         equ $21
 MouseSpriteTileNo     equ $25
+TimerInterval equ 0 
+TimerCallback equ 2
 FastPauseZ80: macro
   move.w #RequestBus,(Z80BusReq) 
   endm
@@ -50,13 +52,6 @@ TurnOnIRQ: Macro
 
 IncTimer: Macro 
   addq.l #1,MainTimer
-ENDM
-
-PushTimer: Macro 
-  ; movea.l stackPtr,a0
-  move.w #\1,-(a0)
-  move.w #\2,-(a0)
-  ; move.l a0,stackPtr
 ENDM
 
 CleanUpTimers: Macro 
@@ -158,6 +153,15 @@ mainLoop:
   move.b #WAITING_FOR_VBLANK,VblankStatus
   jsr changeScore
   jmp mainLoop
+
+pushTimer:; d0 contains callback d1 contains timer
+  move.l stackAddress,a0
+  move.l #0,d5
+  move.l d1,(TimerInterval,a0,d5)
+  move.l d0,(TimerCallback,a0,d5)
+  subq.l #6,a0
+  move.l a0,stackAddress
+  rts 
 
 addBulletSprites: 
   lea BulletArrayPositions,a1 
