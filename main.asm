@@ -179,6 +179,9 @@ addBulletSprites:
 
 addMouseSprites:
   lea  MouseArray,a1
+  move.w (MouseIndex),d6
+  subq.w #1,d6
+.loop
   move.w (a1)+,d0 
   move.w (a1)+,d1
   lsr.w #4,d0 
@@ -186,6 +189,8 @@ addMouseSprites:
   move.w #MouseSpriteTileNo,d2
   move.w #%0101,d3
   jsr addSprite
+  adda.w #4,a1
+  dbf d6,.loop
   rts 
 
 setTile:

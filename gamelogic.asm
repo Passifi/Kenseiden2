@@ -17,11 +17,18 @@ MouseY equ 2
 MouseVelocityX equ 4
 MouseVelocityY equ 6
 
-MouseSize equ MouseX + MouseY + MouseVelocityX + MouseVelocityY
+MouseSize equ MouseX + MouseY + MouseVelocityX + MouseVelocityY 
+MouseToRemoveStack equ $ff5300 
+MouseToRemoveStackpointer equ MouseToRemoveStack  + 4 
+
+pushStack: Macro 
+  move.l \1,a5 
+  move.b d6,-(a5)
+  move.l a5,\1
+ENDM
+
 pushBullet: Macro 
-  move.l BulletStackPointer,a5
-  move.b d6,-(a5) ; presumes it's being used inside the bullet processing routine where d3 => current index
-  move.l a5,(BulletStackPointer)
+  pushStack BulletStackPointer 
 ENDM
 
 popBullet: Macro 
@@ -30,8 +37,13 @@ popBullet: Macro
   move.l a0,(BulletStackPointer)
 ENDM
 
+pushMouse: Macro 
+  pushStack MouseToRemoveStackpointer
+ENDM
+
 initMouseArray:
   move.w #0,(MouseIndex)
+  move.l #MouseToRemoveStack,MouseToRemoveStackpointer
   rts
 
 initBulletArray:
@@ -57,7 +69,7 @@ moveMouses:
   move.w #0,d5
 .loop
   move.w d5,d3
-  lsl.w #4,d3
+  lsl.w #3,d3
   move.w (MouseX,a0,d3),d0
   move.w (MouseY,a0,d3),d1
   add.w (MouseVelocityX,a0,d3),d0
@@ -66,7 +78,7 @@ moveMouses:
   move.w d1,(MouseY,a0,d3)
   addq.w #1,d5
   cmp.w (a1),d5
-  blt .loop
+  bne .loop
   rts
 
 addBullet: ;d0,d1,d2,d3,d4 -> x,y,xVel,yVel,type
@@ -128,6 +140,32 @@ processBullets:
 .end
   rts
 
+compactMouseArray: 
+  move.l MouseToRemoveStackpointer,a0 
+  lea MouseArray,a1 
+  move.w MouseIndex,d0
+  clr d3 
+.loop
+  move.b (a0)+,d3
+  cmpa.l #MouseToRemoveStack,a0
+  bge .end
+  move.w d0,d2 
+  lsl.w #3,d2
+  lsl.w #3,d3
+  move.w (MouseX,a1,d2),d4
+  move.w d4,(MouseX,a1,d3)
+  move.w (MouseY,a1,d2),d4
+  move.w d4,(MouseY,a1,d3)
+  move.w (MouseVelocityX,a1,d2),d4
+  move.w d4,(MouseVelocityX,a1,d3)
+  move.w (MouseVelocityY,a1,d2),d4
+  move.w d4,(MouseVelocityY,a1,d3)
+  subq.w #1,d0
+  jmp .loop
+.end 
+  move.w d0,(MouseIndex)
+  move.l a0,(MouseToRemoveStackpointer)
+  rts 
 compactBulletArray:
   move.l BulletStackPointer,a0 
   clr d3
