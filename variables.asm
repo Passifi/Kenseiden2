@@ -13,6 +13,9 @@ GraphicStackPointer equ RAM_START+104
 MainTimer           equ RAM_START+200
 TimerArray          equ RAM_START+204 ;; consider always marking how large a memory block is and not just where it starts
 WaitTimer           equ TimerArray
+TimerIndex          equ TimerArray-2
+MaxTimers           equ 20 
+TimerArrayEnd       equ TimerArray+MaxTimers*8
 PressWait           equ $30
 PlayerPosition      equ RAM_START+300 
 PlayerXAccu         equ RAM_START+300

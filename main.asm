@@ -22,8 +22,12 @@ BusReadyBit         equ 0
 Edit_Mode_CursorBit    equ 0
 BulletSpriteNo         equ $21
 MouseSpriteTileNo     equ $25
+TimerDone     equ $1000
+TimerRepeat   equ $0001
 TimerInterval equ 0 
-TimerCallback equ 2
+TimerStartInterval equ 2
+TimerCallback equ 4
+TimerFlags    equ 8
 FastPauseZ80: macro
   move.w #RequestBus,(Z80BusReq) 
   endm
@@ -85,13 +89,18 @@ EntryPoint:
   jsr createWindowframe 
   jsr clearRAM
   ;jsr fillRAM
+  move.w #10,d0 
+  move.l #changeScore,d1 
+  move.w #01,d2
+  jsr addTimer
+  move.w #30,d0 
+  move.l #0,d1 
+  move.w #01,d2
+  jsr addTimer
+
   move.w #200,(PlayerX) 
   move.w #200,(PlayerY) 
   move.w #10,d1
-  lea TimerArray,a0 
-.loop1
-  move.w #$ffff,(a0)+ 
-  dbf d1,.loop1
   SetCursor 0,$80
   move.w #1,(CurrentTileNo)
   move.b #WAITING_FOR_VBLANK,(VblankStatus)
@@ -151,17 +160,26 @@ mainLoop:
   jsr addBulletSprites
   jsr addMouseSprites
   move.b #WAITING_FOR_VBLANK,VblankStatus
-  jsr changeScore
   jmp mainLoop
 
-pushTimer:; d0 contains callback d1 contains timer
-  move.l stackAddress,a0
-  move.l #0,d5
-  move.l d1,(TimerInterval,a0,d5)
-  move.l d0,(TimerCallback,a0,d5)
-  subq.l #6,a0
-  move.l a0,stackAddress
+addTimer:; d0 contains Interval d1 contains timer,d2 contains flags
+  lea TimerArray,a0
+  clr.l d5  
+  move.w TimerIndex,d5
+  lsl.w #4,d5
+  move.w d0,(TimerInterval,a0,d5)
+  move.w d0,(TimerStartInterval,a0,d5)
+  move.l d1,(TimerCallback,a0,d5)
+  move.w d2,(TimerFlags,a0,d5)
+  addq.w #1,(TimerIndex)
   rts 
+
+resetTimer: ; uses d3 as index 
+  lea TimerArray,a3
+  lsl.l #4,d3 
+  move.l #$1000,(TimerFlags,a3,d3)
+  move.w (TimerStartInterval,a3,d3),(TimerInterval,a3,d3)
+  rts
 
 addBulletSprites: 
   lea BulletArrayPositions,a1 
@@ -298,18 +316,30 @@ updateScoreWindow: ; touches a0,a1,d0,d1
   rts 
 handleTimers:
   lea TimerArray,a0 
-  move.l #10,d1
-.loop 
-  move.w (a0),d0
-  subq.w #1,d0
-  cmp #0,d0 
-  blt .pos
-  eor.w d0,d0
-.pos
-  move.w d0,(a0)+
-  dbra d1,.loop
+  move.w TimerIndex,d5
+  move.w #0,d0 
+  subq.w #1,d5  
+.loop
+  subq.w #1,(TimerInterval,a0,d0)
+  bgt .next 
+  move.w #TimerDone,(TimerFlags,a0,d0) 
+  move.w (TimerStartInterval,a0,d0),(TimerInterval,a0,d0)
+  move.l (TimerCallback,a0,d0),a1
+  cmpa.l #0,a1
+  beq .next
+  movem.l d0-d4/a0-a4,-(sp)
+  jsr (a1)
+  movem.l (sp)+,d0-d4/a0-a4
+.next
+  add.w #16,d0 
+  dbra d5,.loop
   rts
 
+tstRoutine:
+  move.l d0,-(a7)
+  move.l #12345678,d0
+  move.l (a7)+,d0
+  rts
 movePlayer: ; dynamic version with d4,d5 as x,y change ; touches d4,5 
   add.l d4,(PlayerXAccu) 
   add.l d5,(PlayerYAccu) 
@@ -376,10 +406,13 @@ processA:
   btst #4,d0 
   bne processB
   ; check cooldown
-  move.b (PressedButtons),d3  
-  btst #4,d3 
-  beq processB
+  move.b (TimerArray+16+TimerFlags),d6
+  btst #15,d6
+  bne processB 
+  
   movem.l d0-d7,-(sp)
+    move.l #1,d3
+    jsr resetTimer
     clr.l d5
     move.w (PlayerX),d0 
     move.w (PlayerY),d1 
