@@ -11,7 +11,6 @@ Z80Ram      equ $A00000  ; Where Z80 RAM starts
 Z80BusReq   equ $A11100  ; Z80 bus request line
 Z80Reset    equ $A11200  ; Z80 reset line
 
-; n?Macros
 ; constants 
 WAITING_FOR_VBLANK  equ 0 
 VBLANK_OCCURED      equ 1
@@ -28,6 +27,7 @@ TimerInterval equ 0
 TimerStartInterval equ 2
 TimerCallback equ 4
 TimerFlags    equ 8
+ShotWaitPeriod equ 20
 FastPauseZ80: macro
   move.w #RequestBus,(Z80BusReq) 
   endm
@@ -88,12 +88,11 @@ EntryPoint:
   jsr copyTiles
   jsr createWindowframe 
   jsr clearRAM
-  ;jsr fillRAM
   move.w #10,d0 
   move.l #changeScore,d1 
   move.w #01,d2
   jsr addTimer
-  move.w #30,d0 
+  move.w #ShotWaitPeriod,d0 
   move.l #0,d1 
   move.w #01,d2
   jsr addTimer
@@ -172,12 +171,12 @@ addTimer:; d0 contains Interval d1 contains timer,d2 contains flags
   move.l d1,(TimerCallback,a0,d5)
   move.w d2,(TimerFlags,a0,d5)
   addq.w #1,(TimerIndex)
-  rts 
+  rts
 
 resetTimer: ; uses d3 as index 
   lea TimerArray,a3
   lsl.l #4,d3 
-  move.l #$1000,(TimerFlags,a3,d3)
+  move.w #$0001,(TimerFlags,a3,d3)
   move.w (TimerStartInterval,a3,d3),(TimerInterval,a3,d3)
   rts
 
@@ -260,7 +259,7 @@ clearRAM:
   move.l #($ffffff-RAM_START)>>4,d1 
 .loop 
   move.l d0,(a0)+ 
-  dbra d1,.loop 
+  dbra d1,.loop
   rts
 
 fillRAM:
@@ -365,13 +364,20 @@ inputHandler:
   clr.l d5
   move.b RAM_START,d0
   move.b (EditingFlags),d1
+  move.b d0,d6
+  not.b d6
+  and.b #$0f,d6
+  cmp.b #0,d6
+  beq .noMovement 
+  move.w #0,(shotDirectionY) 
+  move.w #0,(shotDirectionX)
+.noMovement 
   btst #0,d0
   bne processDown
 processUp:
   btst #Edit_Mode_CursorBit,d1
   bne changeTileUp
 moveUp:
-  move.w #0,(shotDirectionX)
   move.w #-120,(shotDirectionY) 
   move.l #(-1*PlayerSpeed),d5
   jmp processLeft
@@ -384,7 +390,6 @@ processDown:
   btst #Edit_Mode_CursorBit,d1
   bne changeTileDown
 moveDown:
-  move.w #0,(shotDirectionX)
   move.l #PlayerSpeed,d5
   move.w #120,(shotDirectionY)
   jmp processLeft
@@ -393,13 +398,11 @@ changeTileDown:
 processLeft:
   btst #2,d0 
   bne processRight
-  move.w #0,(shotDirectionY)
   move.w #-120,(shotDirectionX)
   move.l #-PlayerSpeed,d4
 processRight:
   btst #3,d0 
   bne processA
-  move.w #0,(shotDirectionY)
   move.w #120,(shotDirectionX)
   move.l #PlayerSpeed,d4
 processA:
@@ -407,9 +410,9 @@ processA:
   bne processB
   ; check cooldown
   move.b (TimerArray+16+TimerFlags),d6
-  btst #15,d6
-  bne processB 
-  
+  btst #4,d6
+  beq processB 
+  ; refactor this into a routine 
   movem.l d0-d7,-(sp)
     move.l #1,d3
     jsr resetTimer
