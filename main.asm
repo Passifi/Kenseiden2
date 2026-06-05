@@ -21,15 +21,17 @@ BusReadyBit         equ 0
 Edit_Mode_CursorBit    equ 0
 BulletSpriteNo         equ $21
 MouseSpriteTileNo     equ $25
+
+; Timer flags
 TimerDone     equ $1000
 TimerRepeat   equ $0001
-TimerInterval equ 0 
+
 ; struct Timer Data
+TimerInterval equ 0 
 TimerStartInterval equ 2
 TimerCallback equ 4
 TimerFlags    equ 8
-;TimerStride equ TimerStartInterval+TimerCallback+TimerFlags 
-TimerStride equ 16
+TimerStride equ TimerInterval+TimerStartInterval+TimerCallback+TimerFlags 
 ; struct End
 
 ShotWaitPeriod equ 20
@@ -167,20 +169,15 @@ mainLoop:
   move.b #WAITING_FOR_VBLANK,VblankStatus
   jmp mainLoop
 
-addTimer:; d0 contains Interval d1 contains timer,d2 contains flags
-  ; could be this is an artifact or I screwed up this should be 10+ for each index position
-  ; maybe I intended it to be 16 byte aligned for simplicity which is fine
-  ; but if that was the intetion I should defintly document that info Somewhere
-  ; I do seem to remember this however! not sure whether just multipling it with 10 wouldnt be fine either... 
-
+addTimer:; d0 contains Interval d1 contains timer,d2 contains flags 
+  
   lea TimerArray,a0
   clr.l d5  
   move.w TimerIndex,d5
-  ; code for mult10 move.w d5,d6 
-  lsl.w #4,d5
-  ; lsl.w #3,d5 
-  ; lsl.w #1,d6 
-  ; add.w d6,d5 thats a tiny bit of extra code very little time loss... 
+  ; TimerStride * TimerIndex to get the index at the right position currently TimerStride is 10
+  lsl.w #3,d5 
+  lsl.w #1,d6 
+  add.w d6,d5 
   move.w d0,(TimerInterval,a0,d5)
   move.w d0,(TimerStartInterval,a0,d5)
   move.l d1,(TimerCallback,a0,d5)
@@ -328,6 +325,21 @@ updateScoreWindow: ; touches a0,a1,d0,d1
   cmpa.l #currentScoreEnd,a1
   bne .loop 
   rts 
+
+changeScore: ; touches d0-d1, a0
+  move #0,ccr
+  move.l #$1234,d0 ; for values larger than a long (so effectivly decimal values with more than 8 digits) you'd need a memory based solution, but this should be fine unlikely that I need them 
+  lea currentScoreEnd,a0 
+  move.l #5,d2
+.loop
+  move.b -(a0),d1
+  abcd d0,d1 
+  ror.l #8,d0
+  and.l #$00ffffff,d0
+  move.b d1,(a0)
+  dbra d2,.loop ; technically could end when Xtend isn't set but we also have to check whether the added value is consumed so this is simpler 
+  rts
+
 handleTimers:
   lea TimerArray,a0 
   move.w TimerIndex,d5
@@ -358,20 +370,6 @@ movePlayer: ; dynamic version with d4,d5 as x,y change ; touches d4,5
   add.l d4,(PlayerXAccu) 
   add.l d5,(PlayerYAccu) 
   rts 
-
-changeScore: ; touches d0-d1, a0
-  move #0,ccr
-  move.l #$1234,d0 ; for values larger than a long (so effectivly decimal values with more than 8 digits) you'd need a memory based solution, but this should be fine unlikely that I need them 
-  lea currentScoreEnd,a0 
-  move.l #5,d2
-.loop
-  move.b -(a0),d1
-  abcd d0,d1 
-  ror.l #8,d0
-  and.l #$00ffffff,d0
-  move.b d1,(a0)
-  dbra d2,.loop ; technically could end when Xtend isn't set but we also have to check whether the added value is consumed so this is simpler 
-  rts
 
 PlayerSpeed equ 120000
 inputHandler:
@@ -504,21 +502,6 @@ handleGraphicStack:
 .end
   rts
 
-dmaBranchTest:
-  ; branch condition is saved in d4 
-
-jumpStart:
-  cmp #3,d4 
-  bge .end
-  lea jumpTable,a0    
-  lsl.l #2,d4 
-  adda.l d4,a0
-  move.l (a0),a1
-  jmp (a1) 
-.end
-  rts 
-
-
 vramCopy:
   move.l #$1000,d6
   rts
@@ -562,7 +545,8 @@ HBlankInterrupt:
   ;DMACopyVRAM 1000,$0000,$0000 
   rte
 
-copyTilemap:
+copyTilemap: ; may need some rewriting for a dynamic version 
+  ; in that case we need to dynamically set the beginning, size and position in VRAM
   move.l #(TilemapEnd-Tilemap),d1 
   move.l #Tilemap,d2 
   move.l #$C000,d3 
@@ -574,7 +558,7 @@ VBlankInterrupt:
     jsr readCTRL
     move.b #VBLANK_OCCURED,VblankStatus
     ; handle sprite logic 
-    jsr spriteComplete
+    jsr spriteComplete ;finish the sprite table
     jsr copySpriteTable
     jsr copyTilemap
     jsr handleTimers
@@ -601,26 +585,24 @@ Exception:
   rte
   even
 letters:
-  incbin "letters.bin"
+  incbin "assets/letters.bin"
 lettersEnd:
-tile1:
-  incbin "tile1.bin"
 colors:
-  incbin "palette.bin"
-  incbin "frameTiles_palette.bin"
-  incbin "enemy_palette.bin"
-  incbin "mouse_palette.bin"
+  incbin "assets/palette.bin"
+  incbin "assets/frameTiles_palette.bin"
+  incbin "assets/enemy_palette.bin"
+  incbin "assets/mouse_palette.bin"
 colorsEnd:
 tileData:
   dc.l 0,0,0,0,0,0,0,0
-  incbin "sprite.bin"
-  incbin "frameTiles.bin"
-  incbin "enemy.bin"
-  incbin "mouse.bin"
+  incbin "assets/sprite.bin"
+  incbin "assets/frameTiles.bin"
+  incbin "assets/enemy.bin"
+  incbin "assets/mouse.bin"
 tileDataEnd:
 cursorData:
   move.w #0,d3
-  incbin "cursor.bin"
+  incbin "assets/cursor.bin"
 cursorDataEnd:
 sounddata:
   dc.b VolumeBit,0,0,0 
