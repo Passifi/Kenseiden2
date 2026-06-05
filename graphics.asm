@@ -5,7 +5,7 @@ variableStart equ $ffff00
 SpriteTableVDP_Base equ $F000
 VRAMWrite   equ $4000
 CRAMWrite   equ $C000
-
+VSRAM_ADDR_CMD equ $40000010
 SCREEN_H equ 320 
 SCREEN_W equ 256 
 numOfSprites equ RAMStart+64
@@ -268,6 +268,17 @@ clearCRAM:
   add.w #15,d0 
   dbf d1,.loop
   rts
+
+clearVSRAM: 
+  tst.w (vdp_control) 
+  lea (vdp_control),a0
+  lea (vdp_data),a1 
+  move.l #VSRAM_ADDR_CMD,(a0)
+  move.l #120,d1
+.loop 
+  move.w d0,(a1)
+  dbf d1,.loop 
+  rts 
 
 clearSprites:
   clr.b (numOfSprites)

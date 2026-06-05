@@ -24,9 +24,14 @@ MouseSpriteTileNo     equ $25
 TimerDone     equ $1000
 TimerRepeat   equ $0001
 TimerInterval equ 0 
+; struct Timer Data
 TimerStartInterval equ 2
 TimerCallback equ 4
 TimerFlags    equ 8
+;TimerStride equ TimerStartInterval+TimerCallback+TimerFlags 
+TimerStride equ 16
+; struct End
+
 ShotWaitPeriod equ 20
 FastPauseZ80: macro
   move.w #RequestBus,(Z80BusReq) 
@@ -83,8 +88,9 @@ EntryPoint:
   ; ===============================
   SetupControllers
   jsr ClearVRAM
-  jsr clearCRAM
-  jsr copyLettersToVRAM 
+  jsr clearCRAM 
+  jsr clearVSRAM
+  jsr copyLettersToVRAM
   jsr copyTiles
   jsr createWindowframe 
   jsr clearRAM
@@ -162,10 +168,19 @@ mainLoop:
   jmp mainLoop
 
 addTimer:; d0 contains Interval d1 contains timer,d2 contains flags
+  ; could be this is an artifact or I screwed up this should be 10+ for each index position
+  ; maybe I intended it to be 16 byte aligned for simplicity which is fine
+  ; but if that was the intetion I should defintly document that info Somewhere
+  ; I do seem to remember this however! not sure whether just multipling it with 10 wouldnt be fine either... 
+
   lea TimerArray,a0
   clr.l d5  
   move.w TimerIndex,d5
+  ; code for mult10 move.w d5,d6 
   lsl.w #4,d5
+  ; lsl.w #3,d5 
+  ; lsl.w #1,d6 
+  ; add.w d6,d5 thats a tiny bit of extra code very little time loss... 
   move.w d0,(TimerInterval,a0,d5)
   move.w d0,(TimerStartInterval,a0,d5)
   move.l d1,(TimerCallback,a0,d5)
@@ -329,8 +344,8 @@ handleTimers:
   movem.l d0-d4/a0-a4,-(sp)
   jsr (a1)
   movem.l (sp)+,d0-d4/a0-a4
-.next
-  add.w #16,d0 
+.next 
+  add.w #TimerStride,d0  
   dbra d5,.loop
   rts
 
