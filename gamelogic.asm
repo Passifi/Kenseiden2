@@ -23,7 +23,8 @@ MouseX equ 0
 MouseY equ 2 
 MouseVelocityX equ 4
 MouseVelocityY equ 6
-MouseSize equ MouseX + MouseY + MouseVelocityX + MouseVelocityY
+SpriteFrame equ 8 
+MouseSize equ 16
 MouseToRemoveStack equ $ff5300 
 MouseToRemoveStackpointer equ MouseToRemoveStack  + 4 
 
@@ -52,20 +53,16 @@ initMouseArray:
   move.l #MouseToRemoveStack,MouseToRemoveStackpointer
   rts
 
-initBulletArray:
-  move.w #0,(BulletIndex)
-  move.l #BulletsToRemoveStack,(BulletStackPointer)
-  rts
-
 addMouse: ;d0,d1 -> x,y
   lea MouseArray,a0 
   clr.l d3
   move.w (MouseIndex),d3
-  lsl.w #3,d3
+  lsl.w #4,d3
   move.w d0,(MouseX,a0,d3)
   move.w d1,(MouseY,a0,d3)
   move.w #15,(MouseVelocityX,a0,d3)
   move.w #15,(MouseVelocityY,a0,d3)
+  move.w #0,(SpriteFrame,a0,d3)
   addq.w #1,(MouseIndex)
   rts
 moveMouses: 
@@ -75,7 +72,7 @@ moveMouses:
   move.w #0,d5
 .loop
   move.w d5,d3
-  lsl.w #3,d3
+  lsl.w #4,d3
   move.w (MouseX,a0,d3),d0
   move.w (MouseY,a0,d3),d1
   add.w (MouseVelocityX,a0,d3),d0
@@ -85,6 +82,38 @@ moveMouses:
   addq.w #1,d5
   cmp.w (a1),d5
   bne .loop
+  rts
+compactMouseArray: 
+  move.l MouseToRemoveStackpointer,a0 
+  lea MouseArray,a1 
+  move.w MouseIndex,d0
+  clr d3 
+.loop
+  move.b (a0)+,d3
+  cmpa.l #MouseToRemoveStack,a0
+  bge .end
+  move.w d0,d2 
+  lsl.w #3,d2
+  lsl.w #3,d3
+  move.w (MouseX,a1,d2),d4
+  move.w d4,(MouseX,a1,d3)
+  move.w (MouseY,a1,d2),d4
+  move.w d4,(MouseY,a1,d3)
+  move.w (MouseVelocityX,a1,d2),d4
+  move.w d4,(MouseVelocityX,a1,d3)
+  move.w (MouseVelocityY,a1,d2),d4
+  move.w d4,(MouseVelocityY,a1,d3)
+  move.w (SpriteFrame,a1,d4),(SpriteFrame,a1,d3)
+  subq.w #1,d0
+  jmp .loop
+.end 
+  move.w d0,(MouseIndex)
+  move.l a0,(MouseToRemoveStackpointer)
+  rts 
+
+initBulletArray:
+  move.w #0,(BulletIndex)
+  move.l #BulletsToRemoveStack,(BulletStackPointer)
   rts
 
 addBullet: ;d0,d1,d2,d3,d4 -> x,y,xVel,yVel,type
@@ -169,33 +198,5 @@ processBullets: ;d6 contains the current index. It's used in pushBullet so don't
   dbf.w d5,.loop
 .end
   rts
-
-compactMouseArray: 
-  move.l MouseToRemoveStackpointer,a0 
-  lea MouseArray,a1 
-  move.w MouseIndex,d0
-  clr d3 
-.loop
-  move.b (a0)+,d3
-  cmpa.l #MouseToRemoveStack,a0
-  bge .end
-  move.w d0,d2 
-  lsl.w #3,d2
-  lsl.w #3,d3
-  move.w (MouseX,a1,d2),d4
-  move.w d4,(MouseX,a1,d3)
-  move.w (MouseY,a1,d2),d4
-  move.w d4,(MouseY,a1,d3)
-  move.w (MouseVelocityX,a1,d2),d4
-  move.w d4,(MouseVelocityX,a1,d3)
-  move.w (MouseVelocityY,a1,d2),d4
-  move.w d4,(MouseVelocityY,a1,d3)
-  subq.w #1,d0
-  jmp .loop
-.end 
-  move.w d0,(MouseIndex)
-  move.l a0,(MouseToRemoveStackpointer)
-  rts 
-
 
 
