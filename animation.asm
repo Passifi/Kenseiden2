@@ -33,15 +33,38 @@ handleAnimation:
   rts 
 ; check the state
 playerAnimation:
-  lea (Timer+PlayerTimerOffset),a0  
-  lea PlayerAnimationAddress,a1 
+  move.l #0,d5
+  lea (PlayerAnimationTimer),a0  
+  lea PlayerSpriteBase,a1 
+  move.w (currentFrame),d3 
+  move.w (currentMaxFrames),d4
   move.b (TimerFlags,a0,d5),d0
   btst #TimerDone,d0
   move.b #0,(TimerFlags,a0,d5)
   move.w (TimerIntervalStart,a0,d5),(TimerInterval,a0,d5)
-  
-  bne .next
-
-.next 
+  bne .continue
+  addq.w #1,d3 
+  cmp d3,d4 
+  bge .loadFrame
+  move.w #0,d3
+.loadFrame
+  move.w d3,(currentFrame)
+.continue 
   rts 
+; idle idle-Statusswitch 
+
+; walking equ 4
+; hurt equ 8
+;
+statusSwitch:
+idle equ handleIdle
+walking equ handleWalking
+hurt equ handleHurt
+
+loadFrame: 
+  move.w (playerStatus),d0 
+  lea playerAnimations,a0 
+  lea statusSwitch,a1 
+  
+  
 

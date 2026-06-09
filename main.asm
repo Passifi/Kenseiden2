@@ -32,7 +32,8 @@ TimerStartInterval equ 2
 TimerCallback equ 4
 TimerFlags    equ 8
 TimerStride equ TimerInterval+TimerStartInterval+TimerCallback+TimerFlags 
-; struct End
+; struct End 
+CurrentMouseFrame 
 
 ShotWaitPeriod equ 20
 FastPauseZ80: macro
@@ -193,19 +194,23 @@ resetTimer: ; uses d3 as index
   rts
 
 addBulletSprites: 
-  lea BulletArrayPositions,a1 
+  lea BulletArray,a1 
   move.w (BulletIndex),d6
+  move.w #0,d5
   cmp #0,d6 
   ble .end
   subq.w #1,d6 
 .loop
   move.w #BulletSpriteNo,d2
   move.w #%0101,d3
-  move.w (a1)+,d0
-  move.w (a1)+,d1
+  move.w d5,-(sp)
+  move.w (BulletX,a1,d5),d0
+  move.w (BulletY,a1,d5),d1
+  move.w d5,(sp)+
   lsr.w #4,d0
   lsr.w #4,d1
   jsr addSprite
+  add.w #8,d5
   dbf d6,.loop
 .end
   rts 
