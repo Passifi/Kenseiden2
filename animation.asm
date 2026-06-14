@@ -65,6 +65,7 @@ loadFrame:
   move.w (playerStatus),d0 
   lea playerAnimations,a0 
   lea statusSwitch,a1 
-  
+
+  rts
   
 

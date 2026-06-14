@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "*.asm": "m68k"
+    },
+    "asm.languageServer" : "m68k",
+
+}
