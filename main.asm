@@ -21,6 +21,8 @@ BusReadyBit         equ 0
 Edit_Mode_CursorBit    equ 0
 BulletSpriteNo         equ $21
 MouseSpriteTileNo     equ $25
+Position_Zero_Digit equ $0b1
+Window_Base_Address equ $d000
 
 ; Timer flags
 TimerDone     equ $1000
@@ -90,13 +92,16 @@ EntryPoint:
   ; Ram intializations 
   ; ===============================
   SetupControllers
+  jsr clearRAM
   jsr ClearVRAM
   jsr clearCRAM 
   jsr clearVSRAM
   jsr copyLettersToVRAM
+  ;---------------------------------a-------------------------------- 
+  ; load data
   jsr copyTiles
   jsr createWindowframe 
-  jsr clearRAM
+  ; setup scoreTimer, shotWaitTimer 
   move.w #10,d0 
   move.l #changeScore,d1 
   move.w #01,d2
@@ -106,6 +111,7 @@ EntryPoint:
   move.w #01,d2
   jsr addTimer
 
+  ;intializePlayer
   move.w #200,(PlayerX) 
   move.w #200,(PlayerY) 
   move.w #10,d1
@@ -185,67 +191,13 @@ addTimer:; d0 contains Interval d1 contains timer,d2 contains flags
   move.w d2,(TimerFlags,a0,d5)
   addq.w #1,(TimerIndex)
   rts
-
+; timer should either be in game logic or it's own file
 resetTimer: ; uses d3 as index 
   lea TimerArray,a3
   lsl.l #4,d3 
   move.w #$0001,(TimerFlags,a3,d3)
   move.w (TimerStartInterval,a3,d3),(TimerInterval,a3,d3)
   rts
-
-addBulletSprites: 
-  lea BulletArray,a1 
-  move.w (BulletIndex),d6
-  move.w #0,d5
-  cmp #0,d6 
-  ble .end
-  subq.w #1,d6 
-.loop
-  move.w #BulletSpriteNo,d2
-  move.w #%0101,d3
-  move.w d5,-(sp)
-  move.w (BulletX,a1,d5),d0
-  move.w (BulletY,a1,d5),d1
-  move.w d5,(sp)+
-  lsr.w #4,d0
-  lsr.w #4,d1
-  jsr addSprite
-  add.w #8,d5
-  dbf d6,.loop
-.end
-  rts 
-
-addMouseSprites:
-  lea  MouseArray,a1
-  move.w (MouseIndex),d6
-  subq.w #1,d6
-.loop
-  move.w (a1)+,d0 
-  move.w (a1)+,d1
-  lsr.w #4,d0 
-  lsr.w #4,d1 
-  move.w #%0101,d3
-  jsr addSprite
-  adda.w #4,a1
-  dbf d6,.loop
-  rts 
-
-setTile:
-  movem.l d0-d7,-(a7) 
-  lea Tilemap,a0 
-  move.w (CursorX),d0 
-  move.w (CursorY),d1
-  move.w (CurrentTileNo),d2
-  lsr.w #3,d0
-  sub.w #$80,d1
-  lsl.w #3,d1
-  add.w d0,d1
-  lsl.w #1,d1
-  adda.l d1,a0
-  move.w d2,(a0)
-  movem.l (a7)+,d0-d7 
-  rts
-
 readCTRL:
   FastPauseZ80
   lea Data_Port_1,a0
@@ -268,7 +220,7 @@ readCTRL:
   move.b d0,(RAM_START)
   ResumeZ80
   rts
-
+; belongs into memory module
 clearRAM:
   lea RAM_START,a0 
   move.l #0,d0 
@@ -290,7 +242,7 @@ fillRAM:
 copyLettersToVRAM:
   writeToVRAMAddr $0c20
   lea letters,a0
-  lea vdp_data,a1 
+  lea VDP_data,a1 
   move #((lettersEnd-letters)/2),d1 
 .loop
   move.w (a0)+,(a1)
@@ -299,18 +251,8 @@ copyLettersToVRAM:
 copyTiles:
   rts
 
-scrollScreen:
-  move.w (ScrollPosition),d0 
-  writeToVRAMAddr $f400
-  move.w d0,(vdp_data)
-  addq.w #1,d0 
-  move.w d0,(ScrollPosition)
-  rts
-
-Position_Zero_Digit equ $0b1
-Window_Base_Address equ $d000
 updateScoreWindow: ; touches a0,a1,d0,d1 
-  lea (vdp_data),a0
+  lea (VDP_data),a0
   lea (currentScore),a1
   writeToVRAMAddr (Window_Base_Address+68+12) ; intilaize to VRAM address of Window
 .loop
@@ -375,43 +317,39 @@ movePlayer: ; dynamic version with d4,d5 as x,y change ; touches d4,5
   add.l d5,(PlayerYAccu) 
   rts 
 
+resetShots: 
+  move.w #0,(shotDirectionY) 
+  move.w #0,(shotDirectionX)
+  rts 
 PlayerSpeed equ 120000
+; even though this will cost a couple of cycles 
+; it really doesn't matter for the input 
+; so def rewrite it so that all functions are called subroutine's 
 inputHandler:
   clr.l d4 
   clr.l d5
   move.b RAM_START,d0
-  move.b (EditingFlags),d1
   move.b d0,d6
   not.b d6
   and.b #$0f,d6
   cmp.b #0,d6
   beq .noMovement 
-  move.w #0,(shotDirectionY) 
-  move.w #0,(shotDirectionX)
+  jsr resetShots
 .noMovement 
   btst #0,d0
   bne processDown
 processUp:
-  btst #Edit_Mode_CursorBit,d1
-  bne changeTileUp
 moveUp:
   move.w #-120,(shotDirectionY) 
-  move.l #(-1*PlayerSpeed),d5
-  jmp processLeft
-changeTileUp:
-  addq.w #1,(CurrentTileNo)
+  move.l #(-1*PlayerSpeed),d5 
   jmp processLeft
 processDown:
   btst #1,d0
   bne processLeft
-  btst #Edit_Mode_CursorBit,d1
-  bne changeTileDown
 moveDown:
   move.l #PlayerSpeed,d5
   move.w #120,(shotDirectionY)
   jmp processLeft
-changeTileDown:
-  subq.w #1,(CurrentTileNo)
 processLeft:
   btst #2,d0 
   bne processRight
@@ -445,106 +383,17 @@ processA:
 processB:
   btst #5,d0 
   bne processC 
-  move.w CurrentTileNo,d3 
-  move.w d3,d2 
-  and.w #$6000,d2 
-  cmp.w #$6000,d2
-  bne incrementPalette
-  and.w #$9fff,d3 
-  move.w d3,CurrentTileNo
-  jmp processC
-incrementPalette:
-  add.w #$2000,d3 
-  move.w d3,CurrentTileNo
 processC:
   btst #6,d0
   bne processStart 
 processStart:
   btst #7,d0
   bne .end
-  move.b (EditingFlags),d2 
-  eor #1,d2
-  move.b d2,(EditingFlags)
 .end
   jsr movePlayer
   move.b d0,PressedButtons
   rts 
 
-colorChange:
-  clr.w d0 
-  move.b (RAM_START+1),d0
-  addq.b #1,d0
-  move.b d0,(RAM_START+1)
-  or.w #$8700,d0 
-  move.w d0,(vdp_control)
-  rts
-changeBackgroundColor:
-  move.l (GraphicStackPointer),a0
-  move.w #colorChange,d0
-  move.w d0,-(a0)
-  move.l a0,(GraphicStackPointer)
-  rts
-
-changeSprites:
-  move.l (GraphicStackPointer),a0 
-  move.w #copySpriteTable,d0
-  move.w d0,-(a0)
-  move.l a0,(GraphicStackPointer)
-  rts
-
-handleGraphicStack:
-  move.l (GraphicStackPointer),a0
-  cmpa.l #GraphicStack,a0
-  bge .end
-.loop
-  movea.w (a0),a1
-  jsr (a1)
-  adda.l #4,a0
-  cmpa.l #GraphicStack,a0
-  blt .loop
-  move.l a0,(GraphicStackPointer)
-.end
-  rts
-
-vramCopy:
-  move.l #$1000,d6
-  rts
-cramCopy:
-  move.l #$1100,d6
-  rts
-vsramCopy:
-  move.l #$1200,d6
-  rts
-four:
-  move.l #$1300,d6
-  rts
-
-moveCursor:
-  move.w (CursorX),d0
-  move.w (CursorY),d1
-  addq.w #1,d0
-  addq.w #1,d1
-  and.w #$1ff,d0
-  and.w #$1ff,d1
-  move.w d0,(CursorX)
-  move.w d1,(CursorY)
-  rts
-rng: ; returns a random value in d0 
-  move.l (randomSeed),d0
-  move.l d0,d2 
-  lsl.l #7,d2
-  lsl.l #6,d2
-  eor.l d2,d0
-  move.l d0,d2
-  lsr.l #7,d2
-  lsr.l #7,d2
-  lsr.l #3,d2
-  eor.l d2,d0
-  move.l d0,d2
-  lsl.l #5,d2
-  eor.l d2,d0
-  move.l d0,(randomSeed)
-  rts
 HBlankInterrupt:
   ;DMACopyVRAM 1000,$0000,$0000 
   rte
@@ -565,9 +414,9 @@ VBlankInterrupt:
     jsr spriteComplete ;finish the sprite table
     jsr copySpriteTable
     jsr copyTilemap
+    ; other logic
     jsr handleTimers
     jsr updateScoreWindow
-  ;jsr handleGraphicStack
   movem.l (sp)+,d0-d7
   rte
 AddressError:
@@ -626,16 +475,10 @@ sounddata:
   dc.b PitchBit
   dc.w F3>>1
   dc.b 1
-
   dc.b 2,0,0,0
 errorStr:
   dc.b "something went wrong",0
 scoreStr: 
   dc.b "score",0
-jumpTable:
-  dc.l vramCopy
-  dc.l cramCopy
-  dc.l vsramCopy
-
 _end:
 

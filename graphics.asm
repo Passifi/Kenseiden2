@@ -1,41 +1,48 @@
+; variable positions
 RAMStart    equ $ff0000
-
 SpriteTable equ RAMStart+1000
 variableStart equ $ffff00
 SpriteTableVDP_Base equ $F000
+numOfSprites equ RAMStart+64
+; command macros
 VRAMWrite   equ $4000
 CRAMWrite   equ $C000
 VSRAM_ADDR_CMD equ $40000010
+VDP_control equ $c00004
+VDP_data    equ $c00000
+
+;constants
+; relative position of these window elements in PatternTable 
+; must be adjusted when changing graphics loading routines 
+; or it must be made sure that they remain the same inside the routine
+CornerBlock equ $11
+SingleLineBlock equ $12 
+TopLineBlock  equ $15
+MiddleBlock   equ $17
+
 SCREEN_H equ 320 
 SCREEN_W equ 256 
-numOfSprites equ RAMStart+64
-vdp_control equ $C00004
-vdp_data    equ $C00000
-SpriteSize equ 16
-spriteX equ 1
-spriteY equ 2
-SpriteTile equ 2 
 MAX_SPRITES equ 53
-vdp_mode_1          equ $00
-vdp_mode_2          equ $01
-patternA_addr       equ $02
-patternWindow_addr  equ $03
-patternB_addr       equ $04
-sprite_attrib_table_addr equ $05
-background_color_reg equ $07
+VDP_mode_1          equ $00
+VDP_mode_2          equ $01
+PatternA_addr       equ $02
+PatternWindow_addr  equ $03
+PatternB_addr       equ $04
+Sprite_Attrib_Table_Addr equ $05
+Background_color_reg equ $07
 hirq_reg equ $0a
-vdp_mode_3          equ $0b
-vdp_mode_4          equ $0c
+VDP_mode_3          equ $0b
+VDP_mode_4          equ $0c
 hScroll_data_addr   equ $0d
 auto_incr_reg   equ     $0f
 scroll_size     equ     $10 
 window_x_position equ   $11 
 window_y_position equ   $12 
-dma_length_low    equ $13 
-dma_length_high   equ $14
-dma_src_low       equ $15 
-dma_src_mid       equ $16
-dma_src_high      equ $17
+DMA_length_low    equ $13 
+DMA_length_high   equ $14
+DMA_src_low       equ $15 
+DMA_src_mid       equ $16
+DMA_src_high      equ $17
 HScroll           equ $f400
 
 SET_REGISTER  equ $8000
@@ -50,6 +57,13 @@ VIrqBIT       equ %00100000
 DMAEnableBit  equ %00010000 
 Cell30ModeBit equ %00001000 
 
+
+;struct Sprite
+spriteX equ 1
+spriteY equ 2
+SpriteTile equ 2 
+SpriteSize equ 16
+;struct Sprite_End
 ; TileAttributes  
 FlipTile_Horizontally equ $0800
 FlipTile_Vertically equ $1000
@@ -63,27 +77,27 @@ TilePriority        equ $8000
 string:
   dc.b "hello world!\0"
 strEnd:
+
+; MACROS
 writeToRegister MACRO
-  move.w #((($80|(\2&$1f))<<8)|\1),(vdp_control)
+  move.w #((($80|(\2&$1f))<<8)|\1),(VDP_control)
 ENDM
 
 writeToVRAMAddr: MACRO
-  move.w #VRAMWrite|($3fff&\1),(vdp_control)
-  move.w #(\1>>14),(vdp_control) 
+  move.w #VRAMWrite|($3fff&\1),(VDP_control)
+  move.w #(\1>>14),(VDP_control) 
 ENDM
 
-
-
 DMACopyVRAM: MACRO
-  writeToRegister %01110000|Mode2_Base,vdp_mode_2
-  writeToRegister (\1>>1&$ff),dma_length_low
-  writeToRegister ((\1>>1&$ff00)>>8),dma_length_high
-  writeToRegister ((\2>>1)&$ff),dma_src_low
-  writeToRegister ((\2>>1)&$ff00)>>8,dma_src_mid
-  writeToRegister ((\2>>1)&$3f0000)>>16,dma_src_high
-  move.w #($4000|(($efff&\3))),(vdp_control)
-  move.w #($80)|(($c000&\3)>>14),(vdp_control)
-  writeToRegister %01100000|Mode2_Base,vdp_mode_2
+  writeToRegister %01110000|Mode2_Base,VDP_mode_2
+  writeToRegister (\1>>1&$ff),DMA_length_low
+  writeToRegister ((\1>>1&$ff00)>>8),DMA_length_high
+  writeToRegister ((\2>>1)&$ff),DMA_src_low
+  writeToRegister ((\2>>1)&$ff00)>>8,DMA_src_mid
+  writeToRegister ((\2>>1)&$3f0000)>>16,DMA_src_high
+  move.w #($4000|(($efff&\3))),(VDP_control)
+  move.w #($80)|(($c000&\3)>>14),(VDP_control)
+  writeToRegister %01100000|Mode2_Base,VDP_mode_2
 ENDM
 
 SetRegister: MACRO 
@@ -94,42 +108,104 @@ ENDM
 SetWindowSize: MACRO 
   SetRegister window_x_position
   or.b #\1,d0 
-  move d0,(vdp_control) 
+  move d0,(VDP_control) 
   SetRegister window_y_position
   or.b #\2,d0  
-  move d0,(vdp_control) 
+  move d0,(VDP_control) 
   ENDM
+initializeVDP:
+  writeToRegister (Mode1_Base|HV_CounterBit),(VDP_mode_1) 
+  writeToRegister ((Mode2_Base)|%01100000),VDP_mode_2
+  writeToRegister %00000000,VDP_mode_3 
+  writeToRegister $30,PatternA_addr 
+  writeToRegister $34,PatternWindow_addr 
+  writeToRegister $07,PatternB_addr 
+  writeToRegister $3D,hScroll_data_addr 
+  writeToRegister $78,Sprite_Attrib_Table_Addr 
+  writeToRegister %00000000,6 
+  writeToRegister %00000000,Background_color_reg 
+  writeToRegister %00000000,8 
+  writeToRegister %00000000,9 
+  writeToRegister $ff,hirq_reg 
+  writeToRegister %00000000,window_x_position 
+  writeToRegister %00000000,window_y_position 
+  writeToRegister %00000010,auto_incr_reg 
+  writeToRegister $1,scroll_size 
+  rts
+
+ClearVRAM:
+  tst.w (VDP_control)
+  lea (VDP_control),a0
+  lea (VDP_data),a1 
+  move.l #$40000000,(a0)
+  move.w #0,d0
+  move.w #($ffff/2),d1
+.loop
+  move.w d0,(a1)
+  dbf d1,.loop
+  rts
+
+clearCRAM:
+  tst.w (VDP_control)
+  lea (VDP_control),a0 
+  lea (VDP_data),a1 
+  move.l #$C0000000,(a0)
+  move.w #12,d0 
+  move.w #($80/2),d1
+.loop 
+  move.w d0,(a1)
+  add.w #15,d0 
+  dbf d1,.loop
+  rts
+
+clearVSRAM: 
+  tst.w (VDP_control) 
+  lea (VDP_control),a0
+  lea (VDP_data),a1 
+  move.l #VSRAM_ADDR_CMD,(a0)
+  move.l #120,d1
+.loop 
+  move.w d0,(a1)
+  dbf d1,.loop 
+  rts 
+
+clearSprites:
+  clr.b (numOfSprites)
+  clr.l (SpriteTable+0)
+  clr.l (SpriteTable+4)
+  rts
+
 Even
 DMACopy:
   ; d1 contains length, d2 contains src d3 contains target and d4 contains ram type  
-  lea vdp_control,a0
+  lea VDP_control,a0
   ; shift src and length registers to get proper length 
   lsr.l #1,d1
   lsr.l #1,d2
 
-  SetRegister vdp_mode_2
+  SetRegister VDP_mode_2
   or.w #%01110000|Mode2_Base,d0 
-  move.w d0,(a0);register is set dma is activated 
+  move.w d0,(a0);register is set DMA is activated 
   ; set length low 
-  SetRegister dma_length_low 
+  SetRegister DMA_length_low 
   or.b d1,d0 
   move.w d0,(a0)
   lsr.l #8,d1
   ; set length high
-  SetRegister dma_length_high 
+  SetRegister DMA_length_high 
   or.b d1,d0
   move.w d0,(a0)
   ; set low srcbyte
-  SetRegister dma_src_low 
+  SetRegister DMA_src_low 
   or.b d2,d0 
   move.w d0,(a0)
   ;set mid source byte
-  SetRegister dma_src_mid 
+  SetRegister DMA_src_mid 
   lsr.l #8,d2 
   or.b d2,d0 
   move.w d0,(a0)
   ; set high src byte
-  SetRegister dma_src_high 
+  SetRegister DMA_src_high 
   lsr.l #8,d2
   and.b #$7f,d2
   or.b d2,d0 
@@ -146,16 +222,15 @@ DMACopy:
   or.b #$80,d0 
   move.w d0,(a0)
   move.w $ff000000,(a0) ; 
-  SetRegister vdp_mode_2
+  SetRegister VDP_mode_2
   or.w #%01100000|Mode2_Base,d0 
-  move.w d0,(a0);register is set dma is activated 
+  move.w d0,(a0);register is set DMA is activated 
   rts
 
-transferTiledata:
+transferTiledata: ; needed? else erease
   rts 
 
 copySpriteTable:
-  ; for now copy the entire possible size of the sprite table 
   eor d1,d1 
   move.b (numOfSprites),d1
   cmp #0,d1 
@@ -168,12 +243,8 @@ copySpriteTable:
 .noSprites
   rts
 
-CornerBlock equ $11
-SingleLineBlock equ $12 
-TopLineBlock  equ $15
-MiddleBlock   equ $17
-createWindowframe: 
-  lea vdp_data,a0  
+createWindowframe: ; needs to be called when the window was changed, or window data was overwritten
+  lea VDP_data,a0
   move.w #29,d1 
   writeToVRAMAddr $d000 
   move.w #(CornerBlock|TilePalette1),(a0)
@@ -199,7 +270,7 @@ createWindowframe:
   rts
 writeString: ; srcAddr: a0, targetAddr: d0, length: d2, note that we presume VDP writes  
   jsr setVRAMAddr
-  lea (vdp_data),a1
+  lea (VDP_data),a1
   and.w #$00ff,d1 
 .loop 
   move.b (a0)+,d1 
@@ -213,99 +284,22 @@ writeString: ; srcAddr: a0, targetAddr: d0, length: d2, note that we presume VDP
 .end
   rts 
 
-
 setVRAMAddr: ; address in d0 
   clr.l d1
   move.w d0,d1 
   and.w #$3fff,d0
   or.w #VRAMWrite,d0 
-  move.w d0,(vdp_control)
+  move.w d0,(VDP_control)
   lsr.w #7,d1
   lsr.w #7,d1
-  move.w d1,(vdp_control)
+  move.w d1,(VDP_control)
   rts
-initializeVDP:
-  writeToRegister (Mode1_Base|HV_CounterBit),(vdp_mode_1) 
-  writeToRegister ((Mode2_Base)|%01100000),vdp_mode_2
-  writeToRegister %00000000,vdp_mode_3 
-  writeToRegister $30,patternA_addr 
-  writeToRegister $34,patternWindow_addr 
-  writeToRegister $07,patternB_addr 
-  writeToRegister $3D,hScroll_data_addr 
-  writeToRegister $78,sprite_attrib_table_addr 
-  writeToRegister %00000000,6 
-  writeToRegister %00000000,background_color_reg 
-  writeToRegister %00000000,8 
-  writeToRegister %00000000,9 
-  writeToRegister $ff,hirq_reg 
-  writeToRegister %00000000,window_x_position 
-  writeToRegister %00000000,window_y_position 
-  writeToRegister %00000010,auto_incr_reg 
-  writeToRegister $1,scroll_size 
-  rts
-
-ClearVRAM:
-  tst.w (vdp_control)
-  lea (vdp_control),a0
-  lea (vdp_data),a1 
-  move.l #$40000000,(a0)
-  move.w #0,d0
-  move.w #($ffff/2),d1
-.loop
-  move.w d0,(a1)
-  dbf d1,.loop
-  rts
-
-clearCRAM:
-  tst.w (vdp_control)
-  lea (vdp_control),a0 
-  lea (vdp_data),a1 
-  move.l #$C0000000,(a0)
-  move.w #12,d0 
-  move.w #($80/2),d1
-.loop 
-  move.w d0,(a1)
-  add.w #15,d0 
-  dbf d1,.loop
-  rts
-
-clearVSRAM: 
-  tst.w (vdp_control) 
-  lea (vdp_control),a0
-  lea (vdp_data),a1 
-  move.l #VSRAM_ADDR_CMD,(a0)
-  move.l #120,d1
-.loop 
-  move.w d0,(a1)
-  dbf d1,.loop 
-  rts 
-
-clearSprites:
-  clr.b (numOfSprites)
-  clr.l (SpriteTable+0)
-  clr.l (SpriteTable+4)
-  rts
-
 ; addsprite usage 
 ; set 
 ; move.w (SpriteX),d0 
 ; move.w (SpriteY),d1 
 ; move.w (SpriteTile),d2 
 ; move.w (SpriteSize),d3
-spriteComplete: 
-  lea (SpriteTable),a0 
-  clr d0 
-  move.b (numOfSprites),d0
-  cmp #0,d0
-  beq .initial
-  subq.b #1,d0
-.initial 
-  ; multiply index by 8 + 3 
-  lsl.w #3,d0 
-  addq.w #3,d0
-  lea (a0,d0.w),a0
-  move.b #0,(a0)
-  rts 
 addSprite: ; touches d0-d5, a0 x: d0, y: d1 
   cmp.w #SCREEN_W,d0
   bge.s .skip
@@ -335,12 +329,71 @@ addSprite: ; touches d0-d5, a0 x: d0, y: d1
 .skip
   rts
 
-buildSpriteTable:
+buildSpriteTable: ; was this a test? delete if so 
   move.w (spriteX),d0
   move.w (spriteY),d1
   move.w (SpriteTile),d2
   move.w (SpriteSize),d3
   jsr addSprite
+  rts
+spriteComplete: 
+  lea (SpriteTable),a0 
+  clr d0 
+  move.b (numOfSprites),d0
+  cmp #0,d0
+  beq .initial
+  subq.b #1,d0
+.initial 
+  ; multiply index by 8 + 3 
+  lsl.w #3,d0 
+  addq.w #3,d0
+  lea (a0,d0.w),a0
+  move.b #0,(a0)
+  rts 
+
+addBulletSprites: 
+  lea BulletArray,a1 
+  move.w (BulletIndex),d6
+  move.w #0,d5
+  cmp #0,d6 
+  ble .end
+  subq.w #1,d6 
+.loop
+  move.w #BulletSpriteNo,d2
+  move.w #%0101,d3
+  move.w d5,-(sp)
+  move.w (BulletX,a1,d5),d0
+  move.w (BulletY,a1,d5),d1
+  move.w d5,(sp)+
+  lsr.w #4,d0
+  lsr.w #4,d1
+  jsr addSprite
+  add.w #8,d5
+  dbf d6,.loop
+.end
+  rts 
+
+addMouseSprites:
+  lea  MouseArray,a1
+  move.w (MouseIndex),d6
+  subq.w #1,d6
+.loop
+  move.w (a1)+,d0 
+  move.w (a1)+,d1
+  lsr.w #4,d0 
+  lsr.w #4,d1 
+  move.w #%0101,d3
+  jsr addSprite
+  adda.w #4,a1
+  dbf d6,.loop
+  rts 
+
+scrollScreen:
+  move.w (ScrollPosition),d0 
+  writeToVRAMAddr $f400
+  move.w d0,(vdp_data)
+  addq.w #1,d0 
+  move.w d0,(ScrollPosition)
   rts
 
 
