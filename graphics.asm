@@ -1,9 +1,7 @@
 ; variable positions
 RAMStart    equ $ff0000
-SpriteTable equ RAMStart+1000
 variableStart equ $ffff00
 SpriteTableVDP_Base equ $F000
-numOfSprites equ RAMStart+64
 ; command macros
 VRAMWrite   equ $4000
 CRAMWrite   equ $C000
@@ -278,7 +276,6 @@ writeString: ; srcAddr: a0, targetAddr: d0, length: d2, note that we presume VDP
   beq .end
   addq.b #1,d1
   or.w #TilePalette1,d1
-  ; put some logic to add in tile data (palette) for now we presume palette 0 
   move.w d1,(a1)
   jmp .loop
 .end
@@ -351,6 +348,15 @@ spriteComplete:
   move.b #0,(a0)
   rts 
 
+copyTilemap: ; may need some rewriting for a dynamic version 
+  ; in that case we need to dynamically set the beginning, size and position in VRAM
+  move.l #(TilemapEnd-Tilemap),d1 
+  move.l #Tilemap,d2 
+  move.l #$C000,d3 
+  move.l #VRAMWrite,d4
+  jsr DMACopy
+  rts
+
 addBulletSprites: 
   lea BulletArray,a1 
   move.w (BulletIndex),d6
@@ -391,7 +397,7 @@ addMouseSprites:
 scrollScreen:
   move.w (ScrollPosition),d0 
   writeToVRAMAddr $f400
-  move.w d0,(vdp_data)
+  move.w d0,(VDP_data)
   addq.w #1,d0 
   move.w d0,(ScrollPosition)
   rts

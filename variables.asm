@@ -17,19 +17,26 @@ TimerIndex          equ TimerArray-2
 MaxTimers           equ 20 
 TimerArrayEnd       equ TimerArray+MaxTimers*8
 PressWait           equ $30
+;PlayerData
 PlayerPosition      equ RAM_START+300 
 PlayerXAccu         equ RAM_START+300
 PlayerYAccu         equ RAM_START+304
 PlayerX             equ PlayerXAccu
 PlayerY             equ PlayerYAccu 
-CursorPosition      equ RAM_START+400
-CursorX             equ CursorPosition 
-CursorY             equ CursorPosition+4
-CurrentTileNo       equ CursorPosition+8
-CurrentTileSize     equ CursorPosition+10
+
 VblankStatus        equ RAM_START+500
 soundIndex          equ RAM_START+506
 soundTimer          equ RAM_START+510
+
 Tilemap             equ RAM_START+$1000
 TilemapEnd          equ Tilemap+64*28*2
+SpriteTable         equ RAMStart+1000
+numOfSprites        equ RAMStart+64
+
+BulletIndex           equ $ff3ffA
+BulletArray           equ $Ff4000
+BulletsToRemoveStack  equ BulletArray+BulletArraySize*4+20
+BulletStackPointer    equ BulletsToRemoveStack+8
+MouseToRemoveStack equ $ff5300 
+MouseToRemoveStackpointer equ MouseToRemoveStack  + 4 
 

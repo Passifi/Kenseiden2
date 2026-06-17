@@ -1,33 +1,18 @@
 BulletArraySize equ $20
-BulletIndex equ $ff3ffA
-BulletArrayPositions equ $ff4000
-BulletArray equ $Ff4000
-BulletArrayVelocities equ $ff4000+BulletArraySize*4
-BulletStackLimit      equ BulletArrayVelocities+BulletArraySize*4
-BulletsToRemoveStack  equ BulletArrayVelocities+BulletArraySize*4+20
-BulletStackPointer    equ BulletsToRemoveStack+8
 BulletArrayLength equ $10
-
 BulletX equ 0
 BulletY equ 2 
 BulletVelocityX equ 4 
 BulletVelocityY equ 6 
-
-
 BulletDataSize equ 10
-
 MouseIndex equ $ff4ffa
 MouseArray equ $ff5000
-
 MouseX equ 0 
 MouseY equ 2 
 MouseVelocityX equ 4
 MouseVelocityY equ 6
 SpriteFrame equ 8 
 MouseSize equ 16
-MouseToRemoveStack equ $ff5300 
-MouseToRemoveStackpointer equ MouseToRemoveStack  + 4 
-
 pushStack: Macro 
   move.l \1,a5 
   move.b d6,-(a5)
@@ -35,13 +20,13 @@ pushStack: Macro
 ENDM
 
 pushBullet: Macro 
-  pushStack BulletStackPointer 
+  pushStack \1 
 ENDM
 
 popBullet: Macro 
-  move.l BulletStackPointer,a0
+  move.l \1,a0
   move.b (a0)+,d6 ; currently not bveing used just to remind myself of the clean implementation where a value gets retrieved
-  move.l a0,(BulletStackPointer)
+  move.l a0,(\1)
 ENDM
 
 pushMouse: Macro 
@@ -177,7 +162,7 @@ processBullets: ;d6 contains the current index. It's used in pushBullet so don't
   cmp.w #$00,d0 
   bge .next
 .removeonX
-  pushBullet
+  pushBullet BulletStackPointer
   add.w #8,d3
   jmp .continue
 .next
@@ -189,7 +174,7 @@ processBullets: ;d6 contains the current index. It's used in pushBullet so don't
   cmp.w #$0000,d0 
   bge .next2
 .removeOnY
-  pushBullet
+  pushBullet BulletStackPointer
 .next2
   move.w d0,(BulletY,a0,d3)
 .continue
@@ -198,5 +183,11 @@ processBullets: ;d6 contains the current index. It's used in pushBullet so don't
   dbf.w d5,.loop
 .end
   rts
-
-
+movePlayer: ; dynamic version with d4,d5 as x,y change ; touches d4,5 
+  add.l d4,(PlayerXAccu) 
+  add.l d5,(PlayerYAccu) 
+  rts 
+resetShots: 
+  move.w #0,(shotDirectionY) 
+  move.w #0,(shotDirectionX)
+  rts 

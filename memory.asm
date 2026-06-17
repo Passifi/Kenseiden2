@@ -19,7 +19,7 @@ fillRAM:
 copyLettersToVRAM:
   writeToVRAMAddr $0c20
   lea letters,a0
-  lea vdp_data,a1 
+  lea VDP_data,a1 
   move #((lettersEnd-letters)/2),d1 
 .loop
   move.w (a0)+,(a1)

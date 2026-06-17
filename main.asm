@@ -1,10 +1,15 @@
+  
+  include "variables.asm" 
   include "system/cpuVectors.asm"
   include "system/cartridgeHeader.asm"
   include "graphics.asm"
   include "sound.asm"
-  include "variables.asm" 
   include "gamelogic.asm"; 
-Ports 
+  include "memory.asm"
+  include "utils.asm"
+  include "system.asm" 
+
+;Ports 
 Ctrl_Port_1 equ $A10009
 Data_Port_1 equ $A10003
 Z80Ram      equ $A00000  ; Where Z80 RAM starts
@@ -23,67 +28,12 @@ BulletSpriteNo         equ $21
 MouseSpriteTileNo     equ $25
 Position_Zero_Digit equ $0b1
 Window_Base_Address equ $d000
-
+PlayerSpeed equ 120000
 ; Timer flags
-TimerDone     equ $1000
-TimerRepeat   equ $0001
 
-; struct Timer Data
-TimerInterval equ 0 
-TimerStartInterval equ 2
-TimerCallback equ 4
-TimerFlags    equ 8
-TimerStride equ TimerInterval+TimerStartInterval+TimerCallback+TimerFlags 
-; struct End 
-CurrentMouseFrame 
+;CurrentMouseFrame 
 
 ShotWaitPeriod equ 20
-FastPauseZ80: macro
-  move.w #RequestBus,(Z80BusReq) 
-  endm
-  
-PauseZ80: Macro
-  move.w #RequestBus,(Z80BusReq)
-.wait 
-  btst.b #BusReadyBit,(Z80BusReq)
-  bne.s .wait
-  ENDM
-
-ResumeZ80: Macro
-  move.w #ReleaseBus,(Z80BusReq)
-  ENDM
-
-SetCursor: Macro 
-  move.w #\1,CursorX
-  move.w #\2,CursorY
-ENDM
-TurnOffIRQ: Macro 
-  move.w #$2700,SR 
-  ENDM
-TurnOnIRQ: Macro 
-  move.w #$2300,SR 
-  ENDM
-
-IncTimer: Macro 
-  addq.l #1,MainTimer
-ENDM
-
-CleanUpTimers: Macro 
-  ; lea stackAddress,a0
-  ; movea.l stackPtr,a1
-.loop
-  cmpa.w a0,a1
-  beq .end
-  move.w (a0)
-.end
-ENDM
-
-SetupControllers: Macro 
-  FastPauseZ80
-    move.b  #$40,(Ctrl_Port_1)   ; 1P control port
-    move.b  #$40,(Data_Port_1)   ; 1P data port
-  ResumeZ80
-  ENDM
 
 EntryPoint:
   TurnOffIRQ
@@ -110,13 +60,10 @@ EntryPoint:
   move.l #0,d1 
   move.w #01,d2
   jsr addTimer
-
   ;intializePlayer
   move.w #200,(PlayerX) 
   move.w #200,(PlayerY) 
   move.w #10,d1
-  SetCursor 0,$80
-  move.w #1,(CurrentTileNo)
   move.b #WAITING_FOR_VBLANK,(VblankStatus)
 ; ==================================
   ; copy initial tiles to VRAM by DMA 
@@ -149,12 +96,6 @@ EntryPoint:
   jsr initMouseArray 
   move.l #33,(randomSeed)
   ResumeZ80
-  move.w #$800,d0
-  move.w #$800,d1
-  jsr addMouse
-  move.w #$900,d0
-  move.w #$900,d1
-  jsr addMouse
   TurnOnIRQ
 mainLoop:
   move.b VblankStatus,d0 
@@ -166,7 +107,7 @@ mainLoop:
   jsr inputHandler 
   ; soundroutine here
   jsr clearSprites
-  move.w (CurrentTileNo),d2 
+  move.w #1,d2 
   move.w (PlayerX),d0
   move.w (PlayerY),d1
   move.w #%1111,d3
@@ -176,155 +117,6 @@ mainLoop:
   move.b #WAITING_FOR_VBLANK,VblankStatus
   jmp mainLoop
 
-addTimer:; d0 contains Interval d1 contains timer,d2 contains flags 
-  
-  lea TimerArray,a0
-  clr.l d5  
-  move.w TimerIndex,d5
-  ; TimerStride * TimerIndex to get the index at the right position currently TimerStride is 10
-  lsl.w #3,d5 
-  lsl.w #1,d6 
-  add.w d6,d5 
-  move.w d0,(TimerInterval,a0,d5)
-  move.w d0,(TimerStartInterval,a0,d5)
-  move.l d1,(TimerCallback,a0,d5)
-  move.w d2,(TimerFlags,a0,d5)
-  addq.w #1,(TimerIndex)
-  rts
-; timer should either be in game logic or it's own file
-resetTimer: ; uses d3 as index 
-  lea TimerArray,a3
-  lsl.l #4,d3 
-  move.w #$0001,(TimerFlags,a3,d3)
-  move.w (TimerStartInterval,a3,d3),(TimerInterval,a3,d3)
-  rts
-readCTRL:
-  FastPauseZ80
-  lea Data_Port_1,a0
-  move.b #$40,(a0)
-  nop
-  nop
-  nop
-  nop
-  move.b (a0),d0
-  and.b #$3f,d0
-  move.b #$00,(a0)
-  nop
-  nop
-  nop
-  nop
-  move.b (a0),d1
-  and.b #$30,d1 
-  lsl.b #2,d1
-  or.b  d1,d0
-  move.b d0,(RAM_START)
-  ResumeZ80
-  rts
-; belongs into memory module
-clearRAM:
-  lea RAM_START,a0 
-  move.l #0,d0 
-  move.l #($ffffff-RAM_START)>>4,d1 
-.loop 
-  move.l d0,(a0)+ 
-  dbra d1,.loop
-  rts
-
-fillRAM:
-  lea SpriteTable,a0 
-  move.l #$300,d1
-  move.l #$ffff,d0
-.loop
-  move.w d0,(a0)+ 
-  dbra d1,.loop
-  rts
-
-copyLettersToVRAM:
-  writeToVRAMAddr $0c20
-  lea letters,a0
-  lea VDP_data,a1 
-  move #((lettersEnd-letters)/2),d1 
-.loop
-  move.w (a0)+,(a1)
-  dbf d1,.loop
-  rts
-copyTiles:
-  rts
-
-updateScoreWindow: ; touches a0,a1,d0,d1 
-  lea (VDP_data),a0
-  lea (currentScore),a1
-  writeToVRAMAddr (Window_Base_Address+68+12) ; intilaize to VRAM address of Window
-.loop
-  move.b (a1)+,d0 
-  clr.l d1
-  move.b d0,d1
-  lsr.w #4,d0 
-  and.w #$000f,d0
-  add.w #Position_Zero_Digit,d0 ; $0bf being the position of 
-  and.w #$000f,d1
-  add.w #Position_Zero_Digit,d1
-  or.w #TilePalette1,d0 
-  or.w #TilePalette1,d1 
-  move.w d0,(a0)
-  move.w d1,(a0)
-  cmpa.l #currentScoreEnd,a1
-  bne .loop 
-  rts 
-
-changeScore: ; touches d0-d1, a0
-  move #0,ccr
-  move.l #$1234,d0 ; for values larger than a long (so effectivly decimal values with more than 8 digits) you'd need a memory based solution, but this should be fine unlikely that I need them 
-  lea currentScoreEnd,a0 
-  move.l #5,d2
-.loop
-  move.b -(a0),d1
-  abcd d0,d1 
-  ror.l #8,d0
-  and.l #$00ffffff,d0
-  move.b d1,(a0)
-  dbra d2,.loop ; technically could end when Xtend isn't set but we also have to check whether the added value is consumed so this is simpler 
-  rts
-
-handleTimers:
-  lea TimerArray,a0 
-  move.w TimerIndex,d5
-  move.w #0,d0 
-  subq.w #1,d5  
-.loop
-  subq.w #1,(TimerInterval,a0,d0)
-  bgt .next 
-  move.w #TimerDone,(TimerFlags,a0,d0) 
-  move.w (TimerStartInterval,a0,d0),(TimerInterval,a0,d0)
-  move.l (TimerCallback,a0,d0),a1
-  cmpa.l #0,a1
-  beq .next
-  movem.l d0-d4/a0-a4,-(sp)
-  jsr (a1)
-  movem.l (sp)+,d0-d4/a0-a4
-.next 
-  add.w #TimerStride,d0  
-  dbra d5,.loop
-  rts
-
-tstRoutine:
-  move.l d0,-(a7)
-  move.l #12345678,d0
-  move.l (a7)+,d0
-  rts
-movePlayer: ; dynamic version with d4,d5 as x,y change ; touches d4,5 
-  add.l d4,(PlayerXAccu) 
-  add.l d5,(PlayerYAccu) 
-  rts 
-
-resetShots: 
-  move.w #0,(shotDirectionY) 
-  move.w #0,(shotDirectionX)
-  rts 
-PlayerSpeed equ 120000
-; even though this will cost a couple of cycles 
-; it really doesn't matter for the input 
-; so def rewrite it so that all functions are called subroutine's 
 inputHandler:
   clr.l d4 
   clr.l d5
@@ -398,14 +190,6 @@ HBlankInterrupt:
   ;DMACopyVRAM 1000,$0000,$0000 
   rte
 
-copyTilemap: ; may need some rewriting for a dynamic version 
-  ; in that case we need to dynamically set the beginning, size and position in VRAM
-  move.l #(TilemapEnd-Tilemap),d1 
-  move.l #Tilemap,d2 
-  move.l #$C000,d3 
-  move.l #VRAMWrite,d4
-  jsr DMACopy
-  rts
 VBlankInterrupt: 
   movem.l d0-d7,-(sp)
     jsr readCTRL
