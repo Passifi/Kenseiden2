@@ -7,7 +7,14 @@ TimerInterval equ 0
 TimerStartInterval equ 2
 TimerCallback equ 4
 TimerFlags    equ 8
-TimerStride equ TimerInterval+TimerStartInterval+TimerCallback+TimerFlags 
+TimerStride equ 10 
+
+MultiplyIndexRegisterBytimerStride: Macro  ; \1 is the index register \2 is which ecer register is free for the bitshift multoperations
+  move.w \1,\2 
+  lsl.w #3,\1 
+  lsl.w #1,\2 
+  add.w \2,\1
+  ENDM
 ; struct End 
 
 
@@ -71,15 +78,13 @@ SetupControllers: Macro
   ResumeZ80
   ENDM
 
-addTimer:; d0 contains Interval d1 contains timer,d2 contains flags 
-  
+addTimer:; d0 contains Interval d1 contains 
+;timer,d2 contains flags 
   lea TimerArray,a0
   clr.l d5  
   move.w TimerIndex,d5
   ; TimerStride * TimerIndex to get the index at the right position currently TimerStride is 10
-  lsl.w #3,d5 
-  lsl.w #1,d6 
-  add.w d6,d5 
+  MultiplyIndexRegisterBytimerStride d5,d6 
   move.w d0,(TimerInterval,a0,d5)
   move.w d0,(TimerStartInterval,a0,d5)
   move.l d1,(TimerCallback,a0,d5)
@@ -89,7 +94,7 @@ addTimer:; d0 contains Interval d1 contains timer,d2 contains flags
 ; timer should either be in game logic or it's own file
 resetTimer: ; uses d3 as index 
   lea TimerArray,a3
-  lsl.l #4,d3 
+  MultiplyIndexRegisterBytimerStride d3,d4 
   move.w #$0001,(TimerFlags,a3,d3)
   move.w (TimerStartInterval,a3,d3),(TimerInterval,a3,d3)
   rts
@@ -105,7 +110,6 @@ handleTimers:
   move.w #TimerDone,(TimerFlags,a0,d0) 
   move.w (TimerStartInterval,a0,d0),(TimerInterval,a0,d0)
   move.l (TimerCallback,a0,d0),a1
-  jmp .next
   cmpa.l #0,a1
   beq .next
   movem.l d0-d4/a0-a4,-(sp)

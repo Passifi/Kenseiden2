@@ -29,12 +29,24 @@ MouseSpriteTileNo     equ $25
 Position_Zero_Digit equ $0b1
 Window_Base_Address equ $d000
 PlayerSpeed equ 120000
-; Timer flags
-
-;CurrentMouseFrame 
-
 ShotWaitPeriod equ 20
 
+ResetVBlankStatus: MACRO 
+  move.b #WAITING_FOR_VBLANK,VblankStatus
+  ENDM
+
+CheckVBlankStatus: MACRO
+  move.b VblankStatus,d0 
+  cmp.b #VBLANK_OCCURED,d0 
+  bne main
+  ENDM
+AddPlayerSprite: MACRO 
+  move.w #1,d2  ;replace with a constant for the player tileID
+  move.w (PlayerX),d0
+  move.w (PlayerY),d1
+  move.w #%1111,d3
+  jsr addSprite
+  ENDM 
 EntryPoint:
   TurnOffIRQ
   jsr initializeVDP 
@@ -97,25 +109,18 @@ EntryPoint:
   move.l #33,(randomSeed)
   ResumeZ80
   TurnOnIRQ
-mainLoop:
-  move.b VblankStatus,d0 
-  cmp.b #VBLANK_OCCURED,d0 
-  bne mainLoop
+main:
+  CheckVBlankStatus
   jsr processBullets
   jsr compactBulletArray
-  jsr moveMouses
+  ;jsr moveMouses
   jsr inputHandler 
-  ; soundroutine here
   jsr clearSprites
-  move.w #1,d2 
-  move.w (PlayerX),d0
-  move.w (PlayerY),d1
-  move.w #%1111,d3
-  jsr addSprite
+  AddPlayerSprite
   jsr addBulletSprites
-  jsr addMouseSprites
-  move.b #WAITING_FOR_VBLANK,VblankStatus
-  jmp mainLoop
+  ;jsr addMouseSprites
+  ResetVBlankStatus 
+  jmp main
 
 inputHandler:
   clr.l d4 
@@ -156,7 +161,7 @@ processA:
   btst #4,d0 
   bne processB
   ; check cooldown
-  move.b (TimerArray+16+TimerFlags),d6
+  move.b (TimerArray+TimerStride+TimerFlags),d6
   btst #4,d6
   beq processB 
   ; refactor this into a routine 

@@ -167,7 +167,7 @@ clearVSRAM:
   dbf d1,.loop 
   rts 
 
-clearSprites:
+clearSprites: ;; clears sprite table pointers
   clr.b (numOfSprites)
   clr.l (SpriteTable+0)
   clr.l (SpriteTable+4)
@@ -291,27 +291,24 @@ setVRAMAddr: ; address in d0
   lsr.w #7,d1
   move.w d1,(VDP_control)
   rts
-; addsprite usage 
-; set 
-; move.w (SpriteX),d0 
-; move.w (SpriteY),d1 
-; move.w (SpriteTile),d2 
-; move.w (SpriteSize),d3
-addSprite: ; touches d0-d5, a0 x: d0, y: d1 
+addSprite: ; modifies d2-d5, a0
+  ; usage: x: d0, y: d1, TileNo: d2, SpriteSize: d3 
+  ; check xPosition against screen Boundaries
   cmp.w #SCREEN_W,d0
   bge.s .skip
   cmp.w #-32,d0
   ble.s .skip
-  cmp.w #SCREEN_H,d1
+  ; check yPosition against screen Boundaries 
+  cmp.w #(SCREEN_H+32),d1
   bge.s .skip
   lea (SpriteTable),a0 
   move.b (numOfSprites),d4 
   beq.s .first 
   cmp.b #MAX_SPRITES,d4 
   bhs.s .skip
-  moveq #0,d5
+  moveq #0,d5 ; clear d5 
   move.b d4,d5
-  lsl.w #3,d5
+  lsl.w #3,d5 
   lea (a0,d5.w),a0
   move.b d4,-5(a0)
 .first
@@ -337,7 +334,7 @@ spriteComplete:
   lea (SpriteTable),a0 
   clr d0 
   move.b (numOfSprites),d0
-  cmp #0,d0
+  cmp.b #0,d0
   beq .initial
   subq.b #1,d0
 .initial 
@@ -348,13 +345,23 @@ spriteComplete:
   move.b #0,(a0)
   rts 
 
-copyTilemap: ; may need some rewriting for a dynamic version 
-  ; in that case we need to dynamically set the beginning, size and position in VRAM
-  move.l #(TilemapEnd-Tilemap),d1 
-  move.l #Tilemap,d2 
-  move.l #$C000,d3 
-  move.l #VRAMWrite,d4
-  jsr DMACopy
+copyTilemapDynamic: Macro ;1 is length \2 is src /3 is destination
+  move.l #\1,d1
+  move.l #\2,d2 
+  move.l #\3,d3 
+  move.l #VRAMWrite,d4  
+  jsr DMACopy 
+  ENDM
+copyTilemap: ;
+  ;couple of issues here. 1. How to find the exact area to fill in based on the scrollcutout 
+  ; this is an issue for another function, and I guess this one should work fine 
+  ; but i probably need to move away from a macro to setting d1,d2 before calling the copy tilemap
+  copyTilemapDynamic (TilemapEnd-Tilemap),Tilemap,$C000
+  ;move.l #(TilemapEnd-Tilemap),d1 
+  ;move.l #Tilemap,d2 
+  ;move.l #$C000,d3 
+  ;move.l #VRAMWrite,d4
+  ;jsr DMACopy
   rts
 
 addBulletSprites: 

@@ -27,10 +27,10 @@ TimerDone     equ $1000
 TimerRepeat   equ $0001
 
 ; struct Timer Data
-TimerInterval equ 0 
-TimerStartInterval equ 2
-TimerCallback equ 4
-TimerFlags    equ 8
+TimerInterval equ 0 ; 2bytes
+TimerStartInterval equ 2 ; 2 bytes
+TimerCallback equ 4 ;4 bytes
+TimerFlags    equ 8 ;2 bytes
 TimerStride equ TimerInterval+TimerStartInterval+TimerCallback+TimerFlags 
 ; struct End 
 CurrentMouseFrame 
