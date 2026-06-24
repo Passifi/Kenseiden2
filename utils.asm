@@ -105,10 +105,15 @@ handleTimers:
   move.w #0,d0 
   subq.w #1,d5  
 .loop
+  btst #15,(TimerFlags,a0,d0)
+  beq .next
   subq.w #1,(TimerInterval,a0,d0)
   bgt .next 
-  move.w #TimerDone,(TimerFlags,a0,d0) 
+  and.w #TimerDone,(TimerFlags,a0,d0) 
+  btst #1,(TimerFlags,a0,d0)
+  beq .handleCallback
   move.w (TimerStartInterval,a0,d0),(TimerInterval,a0,d0)
+.handleCallback
   move.l (TimerCallback,a0,d0),a1
   cmpa.l #0,a1
   beq .next

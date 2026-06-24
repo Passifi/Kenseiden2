@@ -29,7 +29,7 @@ MouseSpriteTileNo     equ $25
 Position_Zero_Digit equ $0b1
 Window_Base_Address equ $d000
 PlayerSpeed equ 120000
-ShotWaitPeriod equ 20
+ShotWaitPeriod equ 10
 
 ResetVBlankStatus: MACRO 
   move.b #WAITING_FOR_VBLANK,VblankStatus
@@ -196,7 +196,7 @@ HBlankInterrupt:
   rte
 
 VBlankInterrupt: 
-  movem.l d0-d7,-(sp)
+  movem.l d0-d7/a0-a7,-(sp)
     jsr readCTRL
     move.b #VBLANK_OCCURED,VblankStatus
     ; handle sprite logic 
@@ -206,7 +206,7 @@ VBlankInterrupt:
     ; other logic
     jsr handleTimers
     jsr updateScoreWindow
-  movem.l (sp)+,d0-d7
+  movem.l (sp)+,d0-d7/a0-a7
   rte
 AddressError:
   move.l #$1111,d0 

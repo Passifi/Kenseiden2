@@ -4,7 +4,7 @@ BulletX equ 0
 BulletY equ 2 
 BulletVelocityX equ 4 
 BulletVelocityY equ 6 
-BulletDataSize equ 10
+BulletDataSize equ 8
 MouseIndex equ $ff4ffa
 MouseArray equ $ff5000
 MouseX equ 0 
@@ -130,28 +130,29 @@ compactBulletArray:
 
 removeBullet: ; index in d3 a2, 
   clr.l d4 
-  move.w (BulletIndex),d4
-  cmp.w #0,d4
+  move.w (BulletIndex),d4 
+  subq.w #1,d4
+  cmp.w #1,d4
   ble.w .end
   lsl.w #3,d4 
   lsl.w #3,d3  
-  subq.w #1,(BulletIndex)
   lea (BulletArray),a2 
   move.w (BulletX,a2,d4),(BulletX,a2,d3)
   move.w (BulletY,a2,d4),(BulletY,a2,d3)
   move.w (BulletVelocityX,a2,d4),(BulletVelocityX,a2,d3)
   move.w (BulletVelocityX,a2,d4),(BulletVelocityY,a2,d3)
 .end 
+  subq.w #1,(BulletIndex)
   rts
 
 
 
 processBullets: ;d6 contains the current index. It's used in pushBullet so don't touch it!
-  move.w (BulletIndex),d3
-  cmp.w #0,d3 
+  move.w (BulletIndex),d5
+  moveq #0,d6 
+  cmp.w #0,d5
   ble .end ; no Bullets return
-  move.l #0,d6 
-  move.w d3,d5
+  moveq #0,d3
   subq.w #1,d5
   lea (BulletArray),a0
 .loop
