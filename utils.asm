@@ -1,19 +1,16 @@
-; FLags, constants
 TimerDone     equ $1000
 TimerRepeat   equ $0001
 
 ; struct Timer Data
-TimerInterval equ 0 
-TimerStartInterval equ 2
-TimerCallback equ 4
-TimerFlags    equ 8
-TimerStride equ 10 
+TimerInterval equ 0 ; Word
+TimerStartInterval equ 2 ; Word
+TimerCallback equ 4 ; Long
+TimerStride equ 8
 
+;testStruct 
 MultiplyIndexRegisterBytimerStride: Macro  ; \1 is the index register \2 is which ecer register is free for the bitshift multoperations
   move.w \1,\2 
   lsl.w #3,\1 
-  lsl.w #1,\2 
-  add.w \2,\1
   ENDM
 ; struct End 
 
@@ -88,38 +85,36 @@ addTimer:; d0 contains Interval d1 contains
   move.w d0,(TimerInterval,a0,d5)
   move.w d0,(TimerStartInterval,a0,d5)
   move.l d1,(TimerCallback,a0,d5)
-  move.w d2,(TimerFlags,a0,d5)
   addq.w #1,(TimerIndex)
   rts
-; timer should either be in game logic or it's own file
-resetTimer: ; uses d3 as index 
+
+doFunStuff:
+  rts
+
+resetTimer: ; uses d3 as index  and modifies d2
   lea TimerArray,a3
   MultiplyIndexRegisterBytimerStride d3,d4 
-  move.w #$0001,(TimerFlags,a3,d3)
   move.w (TimerStartInterval,a3,d3),(TimerInterval,a3,d3)
   rts
 
+
 handleTimers:
+  addq.l #1,(MainClock)
   lea TimerArray,a0 
   move.w TimerIndex,d5
   move.w #0,d0 
   subq.w #1,d5  
 .loop
-  btst #15,(TimerFlags,a0,d0)
-  beq .next
   subq.w #1,(TimerInterval,a0,d0)
   bgt .next 
-  and.w #TimerDone,(TimerFlags,a0,d0) 
-  btst #1,(TimerFlags,a0,d0)
-  beq .handleCallback
   move.w (TimerStartInterval,a0,d0),(TimerInterval,a0,d0)
 .handleCallback
   move.l (TimerCallback,a0,d0),a1
   cmpa.l #0,a1
   beq .next
-  movem.l d0-d4/a0-a4,-(sp)
+  movem.l d0-d7/a0-a1,-(sp)
   jsr (a1)
-  movem.l (sp)+,d0-d4/a0-a4
+  movem.l (sp)+,d0-d7/a0-a1
 .next 
   add.w #TimerStride,d0  
   dbra d5,.loop

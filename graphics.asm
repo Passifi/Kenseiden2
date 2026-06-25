@@ -395,7 +395,8 @@ addMouseSprites:
   move.w (a1)+,d1
   lsr.w #4,d0 
   lsr.w #4,d1 
-  move.w #%0101,d3
+  move.w #%0101,d3 
+  move.w #$25,d2
   jsr addSprite
   adda.w #4,a1
   dbf d6,.loop

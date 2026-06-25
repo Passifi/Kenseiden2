@@ -42,7 +42,7 @@ addMouse: ;d0,d1 -> x,y
   lea MouseArray,a0 
   clr.l d3
   move.w (MouseIndex),d3
-  lsl.w #4,d3
+  lsl.w #3,d3
   move.w d0,(MouseX,a0,d3)
   move.w d1,(MouseY,a0,d3)
   move.w #15,(MouseVelocityX,a0,d3)
@@ -50,6 +50,45 @@ addMouse: ;d0,d1 -> x,y
   move.w #0,(SpriteFrame,a0,d3)
   addq.w #1,(MouseIndex)
   rts
+
+steerMouses: 
+  lea MouseArray,a0
+  lea MouseIndex,a1 
+  moveq #0,d5 
+  move.w #0,d6
+.loop 
+  move.w d5,d6 
+  lsl.w #3,d6 
+  move.w (MouseX,a0,d6),d0  
+  move.w (MouseY,a0,d6),d1  
+  move.w (MouseVelocityX,a0,d6),d2  
+  move.w (MouseVelocityY,a0,d6),d3
+  cmp #320,d0 
+  blt .check0Boundary
+  jmp .inverseVelocityX
+.check0Boundary
+  cmp #$0,d0 
+  bgt .checkYBoundary
+.inverseVelocityX 
+  not.w d2
+  addq.w #1,d2 
+  move.w d2,(MouseVelocityX,a0,d6)
+.checkYBoundary
+  cmp #200,d1 
+  blt .checkY0Boundary 
+  jmp .inverseVelocityY
+.checkY0Boundary 
+  cmp #0,d1 
+  bgt .wrapUp
+.inverseVelocityY
+  not.w d1
+  addq.w #1,d1
+  move.w d3,(MouseVelocityY,a0,d6)
+.wrapUp
+  addq.w #1,d5 
+  cmp (a1),d5 
+  bne .loop
+  rts 
 moveMouses: 
   lea MouseArray,a0
   lea MouseIndex,a1
@@ -57,7 +96,7 @@ moveMouses:
   move.w #0,d5
 .loop
   move.w d5,d3
-  lsl.w #4,d3
+  lsl.w #3,d3
   move.w (MouseX,a0,d3),d0
   move.w (MouseY,a0,d3),d1
   add.w (MouseVelocityX,a0,d3),d0
@@ -140,12 +179,15 @@ removeBullet: ; index in d3 a2,
   move.w (BulletX,a2,d4),(BulletX,a2,d3)
   move.w (BulletY,a2,d4),(BulletY,a2,d3)
   move.w (BulletVelocityX,a2,d4),(BulletVelocityX,a2,d3)
-  move.w (BulletVelocityX,a2,d4),(BulletVelocityY,a2,d3)
+  move.w (BulletVelocityY,a2,d4),(BulletVelocityY,a2,d3)
+  move.w #0,(BulletX,a2,d4)
+  move.w #0,(BulletY,a2,d4)
+  move.w #0,(BulletVelocityX,a2,d4)
+  move.w #0,(BulletVelocityY,a2,d4)
+
 .end 
   subq.w #1,(BulletIndex)
   rts
-
-
 
 processBullets: ;d6 contains the current index. It's used in pushBullet so don't touch it!
   move.w (BulletIndex),d5
@@ -170,7 +212,7 @@ processBullets: ;d6 contains the current index. It's used in pushBullet so don't
   move.w d0,(BulletX,a0,d3)
   move.w (BulletY,a0,d3),d0 
   add.w (BulletVelocityY,a0,d3),d0
-  cmp.w #$1320,d0
+  cmp.w #$2020,d0
   bhi .removeOnY
   cmp.w #$0000,d0 
   bge .next2

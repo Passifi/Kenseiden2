@@ -17,19 +17,19 @@ Z80BusReq   equ $A11100  ; Z80 bus request line
 Z80Reset    equ $A11200  ; Z80 reset line
 
 ; constants 
-WAITING_FOR_VBLANK  equ 0 
-VBLANK_OCCURED      equ 1
-UP_BTN              equ 0
-RequestBus          equ $100
-ReleaseBus          equ 0
-BusReadyBit         equ 0
-Edit_Mode_CursorBit    equ 0
-BulletSpriteNo         equ $21
-MouseSpriteTileNo     equ $25
-Position_Zero_Digit equ $0b1
-Window_Base_Address equ $d000
-PlayerSpeed equ 120000
-ShotWaitPeriod equ 10
+WAITING_FOR_VBLANK      equ 0 
+VBLANK_OCCURED          equ 1
+UP_BTN                  equ 0
+RequestBus              equ $100
+ReleaseBus              equ 0
+BusReadyBit             equ 0
+Edit_Mode_CursorBit     equ 0
+BulletSpriteNo          equ $21
+MouseSpriteTileNo       equ $25
+Position_Zero_Digit     equ $0b1
+Window_Base_Address     equ $d000
+PlayerSpeed             equ 120000
+ShotWaitPeriod          equ 1
 
 ResetVBlankStatus: MACRO 
   move.b #WAITING_FOR_VBLANK,VblankStatus
@@ -64,7 +64,7 @@ EntryPoint:
   jsr copyTiles
   jsr createWindowframe 
   ; setup scoreTimer, shotWaitTimer 
-  move.w #10,d0 
+  move.w #100,d0 
   move.l #changeScore,d1 
   move.w #01,d2
   jsr addTimer
@@ -72,6 +72,8 @@ EntryPoint:
   move.l #0,d1 
   move.w #01,d2
   jsr addTimer
+  move.l #0,(MainClock)
+  move.l #0,(LastShot)
   ;intializePlayer
   move.w #200,(PlayerX) 
   move.w #200,(PlayerY) 
@@ -103,22 +105,27 @@ EntryPoint:
   move.w #$100,(Z80Reset)
   ResumeZ80
   PauseZ80
-  jsr playFMNote
+  ;jsr playFMNote
   jsr initBulletArray 
   jsr initMouseArray 
+  move.w #320,d0 
+  move.w #320,d1 
+
+  jsr addMouse
   move.l #33,(randomSeed)
-  ResumeZ80
+  ;ResumeZ80
   TurnOnIRQ
 main:
   CheckVBlankStatus
   jsr processBullets
   jsr compactBulletArray
-  ;jsr moveMouses
+  jsr moveMouses
+  jsr steerMouses
   jsr inputHandler 
   jsr clearSprites
   AddPlayerSprite
   jsr addBulletSprites
-  ;jsr addMouseSprites
+  jsr addMouseSprites
   ResetVBlankStatus 
   jmp main
 
@@ -160,23 +167,28 @@ processRight:
 processA:
   btst #4,d0 
   bne processB
-  ; check cooldown
-  move.b (TimerArray+TimerStride+TimerFlags),d6
-  btst #4,d6
-  beq processB 
+  move.l (MainClock),d6
+  sub.l (LastShot),d6
+  cmp.l #ShotWaitPeriod,d6
+  ble processB 
+  movem.l d0-d7/a0-a7,-(sp)
+    move.l MainClock,(LastShot)
   ; refactor this into a routine 
-  movem.l d0-d7,-(sp)
     move.l #1,d3
     jsr resetTimer
     clr.l d5
     move.w (PlayerX),d0 
     move.w (PlayerY),d1 
+    add.w #8,d0 
+    add.w #8,d1
     lsl.w #4,d0
     lsl.w #4,d1
     move.w (shotDirectionX),d2
     move.w (shotDirectionY),d3
+    add.w d2,d0 
+    add.w d3,d1
     jsr addBullet
-  movem.l (sp)+,d0-d7
+  movem.l (sp)+,d0-d7/a0-a7
 processB:
   btst #5,d0 
   bne processC 

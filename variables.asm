@@ -14,8 +14,11 @@ MainTimer           equ RAM_START+200
 TimerArray          equ RAM_START+204 ;; consider always marking how large a memory block is and not just where it starts
 WaitTimer           equ TimerArray
 TimerIndex          equ TimerArray-2
+MainClock           equ TimerArray-6
+
 MaxTimers           equ 20 
 TimerArrayEnd       equ TimerArray+MaxTimers*8
+LastShot            equ TimerArrayEnd+10
 PressWait           equ $30
 ;PlayerData
 PlayerPosition      equ RAM_START+300 
