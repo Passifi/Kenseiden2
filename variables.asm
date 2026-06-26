@@ -38,7 +38,7 @@ numOfSprites        equ RAMStart+64
 
 BulletIndex           equ $ff3ffA
 BulletArray           equ $Ff4000
-BulletsToRemoveStack  equ BulletArray+BulletArraySize*4+20
+BulletsToRemoveStack  equ BulletArray+BulletArraySize*8+20
 BulletStackPointer    equ BulletsToRemoveStack+8
 MouseToRemoveStack equ $ff5300 
 MouseToRemoveStackpointer equ MouseToRemoveStack  + 4 

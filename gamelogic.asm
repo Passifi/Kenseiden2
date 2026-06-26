@@ -75,15 +75,15 @@ steerMouses:
   addq.w #1,d2 
   move.w d2,(MouseVelocityX,a0,d6)
 .checkYBoundary
-  cmp #$800,d1 
+  cmp #$c80,d1 
   blt .checkY0Boundary 
   jmp .inverseVelocityY
 .checkY0Boundary 
-  cmp #20,d1 
+  cmp #0,d1 
   bgt .wrapUp
 .inverseVelocityY
-  not.w d1
-  addq.w #1,d1
+  not.w d3
+  addq.w #1,d3
   move.w d3,(MouseVelocityY,a0,d6)
 .wrapUp
   addq.w #1,d5 

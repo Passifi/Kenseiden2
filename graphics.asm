@@ -314,6 +314,7 @@ addSprite: ; modifies d2-d5, a0
 .first
   addq.b #1,d4 
   add.w #128,d0
+  add.w #128,d1
   move.w d1,(a0)+
   move.b d3,(a0)+
   move.b d4,(a0)+

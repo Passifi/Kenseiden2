@@ -28,7 +28,7 @@ MouseSpriteTileNo       equ $25
 Position_Zero_Digit     equ $0b1
 Window_Base_Address     equ $d000
 PlayerSpeed             equ 120000
-ShotWaitPeriod          equ 1
+ShotWaitPeriod          equ 10
 
 ResetVBlankStatus: MACRO 
   move.b #WAITING_FOR_VBLANK,VblankStatus
@@ -119,15 +119,17 @@ EntryPoint:
   move.w #$800,d1 
   jsr addMouse
   move.l #33,(randomSeed)
-  ;ResumeZ80
+  ResumeZ80
   TurnOnIRQ
 main:
   CheckVBlankStatus
+  ; game logic Block
   jsr processBullets
   jsr compactBulletArray
   jsr moveMouses
   jsr steerMouses
   jsr inputHandler 
+  ;graphicsBlock 
   jsr clearSprites
   AddPlayerSprite
   jsr addBulletSprites
@@ -215,6 +217,7 @@ HBlankInterrupt:
 
 VBlankInterrupt: 
   movem.l d0-d7/a0-a7,-(sp)
+    PauseZ80 
     jsr readCTRL
     move.b #VBLANK_OCCURED,VblankStatus
     ; handle sprite logic 
@@ -222,11 +225,13 @@ VBlankInterrupt:
     jsr copySpriteTable
     jsr copyTilemap
     ; other logic
-    jsr handleTimers
     jsr updateScoreWindow
+    jsr handleTimers
+    ResumeZ80
   movem.l (sp)+,d0-d7/a0-a7
   rte
 AddressError:
+  ; deactivate vbalnk interrupt here
   move.l #$1111,d0 
   move.l #$2222,d1 
   move.l #$3333,d2 
