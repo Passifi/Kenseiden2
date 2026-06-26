@@ -8,7 +8,6 @@
   include "memory.asm"
   include "utils.asm"
   include "system.asm" 
-
 ;Ports 
 Ctrl_Port_1 equ $A10009
 Data_Port_1 equ $A10003
@@ -47,6 +46,7 @@ AddPlayerSprite: MACRO
   move.w #%1111,d3
   jsr addSprite
   ENDM 
+even
 EntryPoint:
   TurnOffIRQ
   jsr initializeVDP 
@@ -103,14 +103,20 @@ EntryPoint:
   jsr writeString
   FastPauseZ80
   move.w #$100,(Z80Reset)
+  move.w #(SoundEnd-SoundStart),d0 
+  subq #1,d0
+  lea Z80Ram,a0 
+  lea SoundStart,a1
+.soundloading 
+  move.b (a1)+,(a0)+ 
+  dbf d0,.soundloading
   ResumeZ80
   PauseZ80
   ;jsr playFMNote
   jsr initBulletArray 
   jsr initMouseArray 
-  move.w #320,d0 
-  move.w #320,d1 
-
+  move.w #$500,d0 
+  move.w #$800,d1 
   jsr addMouse
   move.l #33,(randomSeed)
   ;ResumeZ80
@@ -258,6 +264,10 @@ cursorData:
   move.w #0,d3
   incbin "assets/cursor.bin"
 cursorDataEnd:
+SoundStart:
+  incbin "sound.bin"
+SoundEnd:
+
 sounddata:
   dc.b VolumeBit,0,0,0 
   dc.b PitchBit

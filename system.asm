@@ -18,7 +18,7 @@ readCTRL:
   lsl.b #2,d1
   or.b  d1,d0
   move.b d0,(RAM_START)
-  ResumeZ80
+  ;ResumeZ80
   rts
 
 updateScoreWindow: ; touches a0,a1,d0,d1 

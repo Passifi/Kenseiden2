@@ -39,6 +39,7 @@ initMouseArray:
   rts
 
 addMouse: ;d0,d1 -> x,y
+  
   lea MouseArray,a0 
   clr.l d3
   move.w (MouseIndex),d3
@@ -63,7 +64,7 @@ steerMouses:
   move.w (MouseY,a0,d6),d1  
   move.w (MouseVelocityX,a0,d6),d2  
   move.w (MouseVelocityY,a0,d6),d3
-  cmp #320,d0 
+  cmp #$1000,d0 
   blt .check0Boundary
   jmp .inverseVelocityX
 .check0Boundary
@@ -74,11 +75,11 @@ steerMouses:
   addq.w #1,d2 
   move.w d2,(MouseVelocityX,a0,d6)
 .checkYBoundary
-  cmp #200,d1 
+  cmp #$800,d1 
   blt .checkY0Boundary 
   jmp .inverseVelocityY
 .checkY0Boundary 
-  cmp #0,d1 
+  cmp #20,d1 
   bgt .wrapUp
 .inverseVelocityY
   not.w d1
@@ -170,6 +171,8 @@ compactBulletArray:
 removeBullet: ; index in d3 a2, 
   clr.l d4 
   move.w (BulletIndex),d4 
+  cmp #0,d4
+  ble .zeroIndex
   subq.w #1,d4
   cmp.w #1,d4
   ble.w .end
@@ -187,6 +190,7 @@ removeBullet: ; index in d3 a2,
 
 .end 
   subq.w #1,(BulletIndex)
+.zeroIndex
   rts
 
 processBullets: ;d6 contains the current index. It's used in pushBullet so don't touch it!
@@ -200,7 +204,7 @@ processBullets: ;d6 contains the current index. It's used in pushBullet so don't
 .loop
   move.w (BulletX,a0,d3),d0 
   add.w (BulletVelocityX,a0,d3),d0 
-  cmp.w #$1320,d0
+  cmp.w #$1400,d0
   bhi .removeonX
   cmp.w #$00,d0 
   bge .next
