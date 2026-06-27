@@ -61,26 +61,27 @@ hitDetection:
 .innerLoop  
     move.w d1,-(a7)
     lsl.w #3,d1
-      move.w (BulletX,a1,d1),d2 
-      move.w (MouseX,a0,d0),d3
-      move.w (MouseX,a0,d0),d4 
-      add.w #MouseW,d3 
-      cmp.w d3,d2
-      bge .nextInner
+      move.w (BulletX,a0,d1),d2 
+      move.w (BulletX,a0,d1),d3
+      move.w (MouseX,a0,d0),d4
+      move.w (MouseX,a0,d0),d5 
       add.w #BulletW,d2 
-      cmp.w d2,d4 
-      bge .nextInner
-      move.w (BulletY,a1,d1),d2 
-      move.w (MouseY,a0,d0),d3 
-      move.w (MouseY,a0,d0),d4
-      add.w #MouseH,d3
-      cmp.w d3,d2 
-      bge .nextInner
-      add.w #BulletH,d2
-      cmp.w d2,d4
-      bge .nextInner
+      cmp.w d2,d5
+      ble .nextInner
+      add.w #MouseW,d4 
+      cmp.w d4,d3 
+      ble .nextInner
+      move.w (MouseY,a0,d0),d2 
+      move.w (MouseY,a0,d0),d3
+      move.w (BulletY,a0,d1),d4 
+      move.w (BulletY,a0,d1),d5 
+      add.w #MouseH,d2
+      cmp.w d2,d5 
+      ble .nextInner
+      add.w #BulletH,d5
+      cmp.w d5,d3 
+      ble .nextInner
       move.w d0,d6
-      jmp *
       pushBullet BulletStackPointer
       move.w (a7)+,d1 
       move.w (a7)+,d1 
