@@ -28,6 +28,7 @@ MouseSpriteTileNo       equ $25
 Position_Zero_Digit     equ $0b1
 Window_Base_Address     equ $d000
 PlayerSpeed             equ 120000
+ShotSpeed               equ 100
 ShotWaitPeriod          equ 10
 
 ResetVBlankStatus: MACRO 
@@ -129,6 +130,7 @@ main:
   jsr moveMouses
   jsr steerMouses
   jsr inputHandler 
+  jsr hitDetection 
   ;graphicsBlock 
   jsr clearSprites
   AddPlayerSprite
@@ -152,7 +154,7 @@ inputHandler:
   bne processDown
 processUp:
 moveUp:
-  move.w #-120,(shotDirectionY) 
+  move.w #-ShotSpeed,(shotDirectionY) 
   move.l #(-1*PlayerSpeed),d5 
   jmp processLeft
 processDown:
@@ -160,17 +162,17 @@ processDown:
   bne processLeft
 moveDown:
   move.l #PlayerSpeed,d5
-  move.w #120,(shotDirectionY)
+  move.w #ShotSpeed,(shotDirectionY)
   jmp processLeft
 processLeft:
   btst #2,d0 
   bne processRight
-  move.w #-120,(shotDirectionX)
+  move.w #-ShotSpeed,(shotDirectionX)
   move.l #-PlayerSpeed,d4
 processRight:
   btst #3,d0 
   bne processA
-  move.w #120,(shotDirectionX)
+  move.w #ShotSpeed,(shotDirectionX)
   move.l #PlayerSpeed,d4
 processA:
   btst #4,d0 

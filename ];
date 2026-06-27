@@ -42,48 +42,30 @@ initMouseArray:
   move.l #MouseToRemoveStack,MouseToRemoveStackpointer
   rts
 
-hitDetection: 
+HitDetection: 
   ;  go through all bullets, all mice  
   move.w #0,d0 
   move.w #0,d1 
   lea MouseArray,a0
   lea BulletArray,a1 
 .outerLoop 
-  move.w d0,-(a7)
-  lsl.w #3,d0
   move.w (MouseX,a0,d0),d2 
-  move.w d2,d3 
+  move.w (MouseX,a0,d0),d3
 .innerLoop  
-    move.w d1,-(a7)
-    lsl.w #3,d1
-      move.w (BulletX,a0,d1),d6 
-      move.w d6,d7
-      add.w #MouseW,d2 
-      cmp.w d2,d6 
-      bge .nextInner
-      add.w #BulletW,d6 
-      cmp.w d6,d3 
-      bge .nextInner
-      move.w (MouseY,a0,d0),d2 
-      move.w (MouseY,a0,d0),d3
-      move.w (BulletY,a0,d1),d6 
-      move.w (BulletY,a0,d1),d7 
-      add.w #MouseH,d2
-      cmp.w d2,d6 
-      bge .nextInner
-      add.w #BulletH,d6
-      cmp.w d6,d3 
-      bge .nextInner
-      jmp * ; for testing
+  move.w d0,-(a7)
+  move.w (BulletX,a0,d0),d6 
+  move.w (BulletX,a0,d0),d7 
+  ; bulletX < Mouse.X + width
+  add.w #MouseW,d2 
+  cmp.w d2,d6 
+  bge .nextInner
+  add.w #BulletW,d6 
+  cmp.w d6,d3 
+  bge .nextInner
 .nextInner
-    move.w (a7)+,d1 
-    addq.w #1,d1 
-    cmp.w (BulletIndex),d1
-    blt .innerLoop
-  move.w (a7)+,d0
-  addq.w #1,d0
-  cmp.w (MouseIndex),d1
-  blt .outerLoop
+  add
+.outerLoop
+
   rts
 
 addMouse: ;d0,d1 -> x,y
