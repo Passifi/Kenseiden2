@@ -278,7 +278,7 @@ processBullets: ;d6 contains the current index. It's used in pushBullet so don't
   move.w (BulletY,a0,d3),d0 
   add.w (BulletVelocityY,a0,d3),d0
   cmp.w #$2020,d0
-  bhi .removeOnY
+  bge .removeOnY
   cmp.w #$F07C,d0 
   bge .next2
 .removeOnY
