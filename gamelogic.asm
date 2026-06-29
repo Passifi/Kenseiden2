@@ -266,8 +266,8 @@ processBullets: ;d6 contains the current index. It's used in pushBullet so don't
   move.w (BulletX,a0,d3),d0 
   add.w (BulletVelocityX,a0,d3),d0 
   cmp.w #$1400,d0
-  bhi .removeonX
-  cmp.w #$00,d0 
+  bge .removeonX
+  cmp.w #$Fa00,d0 
   bge .next
 .removeonX
   pushBullet BulletStackPointer
@@ -279,7 +279,7 @@ processBullets: ;d6 contains the current index. It's used in pushBullet so don't
   add.w (BulletVelocityY,a0,d3),d0
   cmp.w #$2020,d0
   bhi .removeOnY
-  cmp.w #$0000,d0 
+  cmp.w #$F07C,d0 
   bge .next2
 .removeOnY
   pushBullet BulletStackPointer

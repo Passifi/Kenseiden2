@@ -28,7 +28,7 @@ MouseSpriteTileNo       equ $25
 Position_Zero_Digit     equ $0b1
 Window_Base_Address     equ $d000
 PlayerSpeed             equ 120000
-ShotSpeed               equ 100
+ShotSpeed               equ 40
 ShotWaitPeriod          equ 10
 
 ResetVBlankStatus: MACRO 
@@ -125,17 +125,19 @@ EntryPoint:
 main:
   CheckVBlankStatus
   ; game logic Block
+
+  jsr inputHandler 
   jsr processBullets
   jsr compactBulletArray
   jsr moveMouses
   jsr steerMouses
-  jsr inputHandler 
   jsr hitDetection 
   ;graphicsBlock 
   jsr clearSprites
   AddPlayerSprite
-  jsr addBulletSprites
+
   jsr addMouseSprites
+  jsr addBulletSprites
   ResetVBlankStatus 
   jmp main
 

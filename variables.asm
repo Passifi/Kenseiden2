@@ -33,8 +33,8 @@ soundTimer          equ RAM_START+510
 
 Tilemap             equ RAM_START+$1000
 TilemapEnd          equ Tilemap+64*28*2
-SpriteTable         equ RAMStart+1000
-numOfSprites        equ RAMStart+64
+numOfSprites        equ RAMStart+100
+SpriteTable         equ numOfSprites+4
 
 BulletIndex           equ $ff3ffA
 BulletArray           equ $Ff4000
