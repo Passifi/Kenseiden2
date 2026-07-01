@@ -1,10 +1,11 @@
-BulletArraySize equ $20
+BulletArrayMaxSize equ $20
 BulletArrayLength equ $10
-BulletX equ 0
-BulletY equ 2 
-BulletVelocityX equ 4 
-BulletVelocityY equ 6 
-BulletDataSize equ 8
+BulletID equ 0 
+BulletX equ BulletID+2
+BulletY equ BulletX+2 
+BulletVelocityX equ BulletY+2
+BulletVelocityY equ BulletVelocityX+2 
+BulletDataSize equ 16
 MouseIndex equ $ff4ffa
 MouseArray equ $ff5000
 MouseX equ 0 
@@ -17,6 +18,7 @@ MouseW equ 8<<4
 MouseH equ 8<<4
 BulletW equ 8<<4
 BulletH equ 8<<4
+
 pushStack: Macro 
   move.l \1,a5 
   move.b d6,-(a5)
@@ -24,7 +26,9 @@ pushStack: Macro
 ENDM
 
 pushBullet: Macro 
-  pushStack \1 
+  move.l \1,a5 
+  move.w (BulletID,a0),-(a5) 
+  move.l a5,\1
 ENDM
 
 popBullet: Macro 
@@ -80,7 +84,6 @@ hitDetection:
       cmp.w d2,d4
       bge .nextInner
       move.w d0,d6
-      jmp *
       pushBullet BulletStackPointer
       move.w (a7)+,d1 
       move.w (a7)+,d1 
@@ -100,7 +103,6 @@ hitDetection:
   rts
 
 addMouse: ;d0,d1 -> x,y
-  
   lea MouseArray,a0 
   clr.l d3
   move.w (MouseIndex),d3
@@ -204,10 +206,12 @@ initBulletArray:
 
 addBullet: ;d0,d1,d2,d3,d4 -> x,y,xVel,yVel,type
   move.w (BulletIndex),d5 
-  cmp.w #BulletArraySize,d5 
+  cmp.w #BulletArrayMaxSize,d5 
   bge .end ; if index >= array size return 
-  lsl.w #3,d5 ;set d5 to proper position in array
+  lsl.w #4,d5 ;set d5 to proper position in array
   lea BulletArray,a0 
+  move.w (CurrentBulletID),(BulletID,a0,d5)
+  addq.w #1,(CurrentBulletID)
   move.w d0,(BulletX,a0,d5)
   move.w d1,(BulletY,a0,d5)
   move.w d2,(BulletVelocityX,a0,d5)
@@ -216,13 +220,32 @@ addBullet: ;d0,d1,d2,d3,d4 -> x,y,xVel,yVel,type
 .end
   rts
 
+findBulletID: Macro  ; use will set d1 to the current Index holding the 
+  ; desired bulletID will set d1 to $ffff if bulletID is not found inside the array
+  moveq.l #0,d0
+  moveq.l #0,d1 
+.loop 
+  cmp.w (BulletID,a2,d0),d3 
+  beq .end 
+  add.w #16,d0 
+  addq.w #1,d1 
+  cmp d1,(BulletIndex)
+  bge .notFound 
+  jmp .loop
+.notFound 
+  move.w #$ffff,d1
+.end 
+ENDM
+
 compactBulletArray:
+  lea (BulletArray),a2 
   move.l BulletStackPointer,a0 
   clr d3
 .loop 
   cmpa.l #BulletsToRemoveStack,a0
   bge .end 
-  move.b (a0)+,d3 
+  cmp (BulletIndex),d3
+  bgt .loop
   jsr removeBullet
   jmp .loop
 .end
@@ -237,9 +260,8 @@ removeBullet: ; index in d3 a2,
   subq.w #1,d4
   cmp.w #1,d4
   ble.w .end
-  lsl.w #3,d4 
-  lsl.w #3,d3  
-  lea (BulletArray),a2 
+  lsl.w #4,d4 
+  lsl.w #4,d3  
   move.w (BulletX,a2,d4),(BulletX,a2,d3)
   move.w (BulletY,a2,d4),(BulletY,a2,d3)
   move.w (BulletVelocityX,a2,d4),(BulletVelocityX,a2,d3)
@@ -259,24 +281,22 @@ processBullets: ;d6 contains the current index. It's used in pushBullet so don't
   moveq #0,d6 
   cmp.w #0,d5
   ble .end ; no Bullets return
-  moveq #0,d3
   subq.w #1,d5
   lea (BulletArray),a0
 .loop
-  move.w (BulletX,a0,d3),d0 
-  add.w (BulletVelocityX,a0,d3),d0 
+  move.w (BulletX,a0),d0 
+  add.w (BulletVelocityX,a0),d0 
   cmp.w #$1400,d0
   bge .removeonX
   cmp.w #$Fa00,d0 
   bge .next
 .removeonX
   pushBullet BulletStackPointer
-  add.w #8,d3
   jmp .continue
 .next
-  move.w d0,(BulletX,a0,d3)
-  move.w (BulletY,a0,d3),d0 
-  add.w (BulletVelocityY,a0,d3),d0
+  move.w d0,(BulletX,a0)
+  move.w (BulletY,a0),d0 
+  add.w (BulletVelocityY,a0),d0
   cmp.w #$2020,d0
   bge .removeOnY
   cmp.w #$F07C,d0 
@@ -284,9 +304,9 @@ processBullets: ;d6 contains the current index. It's used in pushBullet so don't
 .removeOnY
   pushBullet BulletStackPointer
 .next2
-  move.w d0,(BulletY,a0,d3)
+  move.w d0,(BulletY,a0)
 .continue
-  addq.l #8,d3
+  add.l #16,a0
   addq.w #1,d6 
   dbf.w d5,.loop
 .end
