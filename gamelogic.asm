@@ -87,7 +87,7 @@ hitDetection:
       cmp.w d2,d4
       bge .nextInner
       move.w d0,d6
-      pushBullet BulletStackPointer
+      move.w #Dead,(BulletState,a1,d1)
       move.w (a7)+,d1 
       move.w (a7)+,d1 
 
