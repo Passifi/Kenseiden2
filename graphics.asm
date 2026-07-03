@@ -373,6 +373,8 @@ addBulletSprites:
   ble .end
   subq.w #1,d6 
 .loop
+  cmp #Dead,(BulletState,a1,d5)
+  beq .deadBullet
   move.w #BulletSpriteNo,d2
   move.w #%0101,d3
   move.w (BulletX,a1,d5),d0
@@ -382,7 +384,8 @@ addBulletSprites:
   move.w d5,-(sp)
   jsr addSprite
   move.w (sp)+,d5
-  add.w #8,d5
+.deadBullet
+  add.w #16,d5
   dbf d6,.loop
 .end
   rts 
