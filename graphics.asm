@@ -390,10 +390,11 @@ addBulletSprites:
 .end
   rts 
 
-addMouseSprites:
-  lea  MouseArray,a1
-  move.w (MouseIndex),d6
+addEnemySprite:
+  lea  Enemies,a1
+  move.w (EnemyTail),d6
   subq.w #1,d6
+  add.w #2,a1
 .loop
   move.w (a1)+,d0 
   move.w (a1)+,d1

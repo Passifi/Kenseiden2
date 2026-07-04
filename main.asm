@@ -115,10 +115,10 @@ EntryPoint:
   PauseZ80
   ;jsr playFMNote
   jsr initBulletArray 
-  jsr initMouseArray 
+  jsr initEnemies 
   move.w #$500,d0 
   move.w #$800,d1 
-  jsr addMouse
+  jsr addEnemy
   move.l #33,(randomSeed)
   ResumeZ80
   TurnOnIRQ
@@ -130,13 +130,13 @@ main:
   jsr processBullets
   jsr compactBulletArray
   jsr moveMouses
-  jsr steerMouses
+  jsr steerEnemies
   jsr hitDetection 
   ;graphicsBlock 
   jsr clearSprites
   AddPlayerSprite
 
-  jsr addMouseSprites
+  jsr addEnemySprite
   jsr addBulletSprites
   ResetVBlankStatus 
   jmp main

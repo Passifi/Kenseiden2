@@ -6,14 +6,16 @@ BulletY equ BulletX+2
 BulletVelocityX equ BulletY+2
 BulletVelocityY equ BulletVelocityX+2 
 BulletDataSize equ 16
-MouseIndex equ $ff4ffa
-MouseArray equ $ff5000
-MouseX equ 0 
-MouseY equ 2 
-MouseVelocityX equ 4
-MouseVelocityY equ 6
-SpriteFrame equ 8 
-MouseSize equ 16
+EnemyTail equ $ff4ffa
+Enemies equ $ff5000
+EnemyState equ 0
+EnemyX equ EnemyState+2
+EnemyY equ EnemyX+2
+EnemyVelocityX equ EnemyY+2
+EnemyVelocityY equ EnemyVelocityX+2
+SpriteFrame equ EnemyVelocityY+2 
+EnemyDataSize equ 16
+
 MouseW equ 8<<4 
 MouseH equ 8<<4
 BulletW equ 8<<4
@@ -44,8 +46,8 @@ pushMouse: Macro
   pushStack MouseToRemoveStackpointer
 ENDM
 
-initMouseArray:
-  move.w #0,(MouseIndex)
+initEnemies:
+  move.w #0,(EnemyTail)
   move.l #MouseToRemoveStack,MouseToRemoveStackpointer
   rts
 
@@ -53,24 +55,24 @@ hitDetection:
   ;  go through all bullets, all mice  
    
   move.w (BulletIndex),d0
-  move.w (MouseIndex),d1
+  move.w (EnemyTail),d1
   cmp #0,d0 
   beq .end
   cmp #0,d1
   beq .end
   move.w #0,d0
   move.w #0,d1 
-  lea MouseArray,a0
+  lea Enemies,a0
   lea BulletArray,a1 
 .outerLoop 
   move.w d0,-(a7)
-  lsl.w #3,d0
+  lsl.w #4,d0
 .innerLoop  
     move.w d1,-(a7)
     lsl.w #3,d1
       move.w (BulletX,a1,d1),d2 
-      move.w (MouseX,a0,d0),d3
-      move.w (MouseX,a0,d0),d4 
+      move.w (EnemyX,a0,d0),d3
+      move.w (EnemyX,a0,d0),d4 
       add.w #MouseW,d3 
       cmp.w d3,d2
       bge .nextInner
@@ -78,8 +80,8 @@ hitDetection:
       cmp.w d2,d4 
       bge .nextInner
       move.w (BulletY,a1,d1),d2 
-      move.w (MouseY,a0,d0),d3 
-      move.w (MouseY,a0,d0),d4
+      move.w (EnemyY,a0,d0),d3 
+      move.w (EnemyY,a0,d0),d4
       add.w #MouseH,d3
       cmp.w d3,d2 
       bge .nextInner
@@ -100,36 +102,36 @@ hitDetection:
     blt .innerLoop
   move.w (a7)+,d0
   addq.w #1,d0
-  cmp.w (MouseIndex),d1
+  cmp.w (EnemyTail),d1
   blt .outerLoop
 .end
   rts
 
-addMouse: ;d0,d1 -> x,y
-  lea MouseArray,a0 
+addEnemy: ;d0,d1 -> x,y
+  lea Enemies,a0 
   clr.l d3
-  move.w (MouseIndex),d3
-  lsl.w #3,d3
-  move.w d0,(MouseX,a0,d3)
-  move.w d1,(MouseY,a0,d3)
-  move.w #15,(MouseVelocityX,a0,d3)
-  move.w #15,(MouseVelocityY,a0,d3)
+  move.w (EnemyTail),d3
+  lsl.w #4,d3
+  move.w d0,(EnemyX,a0,d3)
+  move.w d1,(EnemyY,a0,d3)
+  move.w #15,(EnemyVelocityX,a0,d3)
+  move.w #15,(EnemyVelocityY,a0,d3)
   move.w #0,(SpriteFrame,a0,d3)
-  addq.w #1,(MouseIndex)
+  addq.w #1,(EnemyTail)
   rts
 
-steerMouses: 
-  lea MouseArray,a0
-  lea MouseIndex,a1 
+steerEnemies: 
+  lea Enemies,a0
+  lea EnemyTail,a1 
   moveq #0,d5 
   move.w #0,d6
 .loop 
   move.w d5,d6 
-  lsl.w #3,d6 
-  move.w (MouseX,a0,d6),d0  
-  move.w (MouseY,a0,d6),d1  
-  move.w (MouseVelocityX,a0,d6),d2  
-  move.w (MouseVelocityY,a0,d6),d3
+  lsl.w #4,d6 
+  move.w (EnemyX,a0,d6),d0  
+  move.w (EnemyY,a0,d6),d1  
+  move.w (EnemyVelocityX,a0,d6),d2  
+  move.w (EnemyVelocityY,a0,d6),d3
   cmp #$1000,d0 
   blt .check0Boundary
   jmp .inverseVelocityX
@@ -139,7 +141,7 @@ steerMouses:
 .inverseVelocityX 
   not.w d2
   addq.w #1,d2 
-  move.w d2,(MouseVelocityX,a0,d6)
+  move.w d2,(EnemyVelocityX,a0,d6)
 .checkYBoundary
   cmp #$c80,d1 
   blt .checkY0Boundary 
@@ -150,55 +152,55 @@ steerMouses:
 .inverseVelocityY
   not.w d3
   addq.w #1,d3
-  move.w d3,(MouseVelocityY,a0,d6)
+  move.w d3,(EnemyVelocityY,a0,d6)
 .wrapUp
   addq.w #1,d5 
   cmp (a1),d5 
   bne .loop
   rts 
 moveMouses: 
-  lea MouseArray,a0
-  lea MouseIndex,a1
+  lea Enemies,a0
+  lea EnemyTail,a1
   clr.l d3
   move.w #0,d5
 .loop
   move.w d5,d3
-  lsl.w #3,d3
-  move.w (MouseX,a0,d3),d0
-  move.w (MouseY,a0,d3),d1
-  add.w (MouseVelocityX,a0,d3),d0
-  add.w (MouseVelocityY,a0,d3),d1
-  move.w d0,(MouseX,a0,d3)
-  move.w d1,(MouseY,a0,d3)
+  lsl.w #4,d3
+  move.w (EnemyX,a0,d3),d0
+  move.w (EnemyY,a0,d3),d1
+  add.w (EnemyVelocityX,a0,d3),d0
+  add.w (EnemyVelocityY,a0,d3),d1
+  move.w d0,(EnemyX,a0,d3)
+  move.w d1,(EnemyY,a0,d3)
   addq.w #1,d5
   cmp.w (a1),d5
   bne .loop
   rts
-compactMouseArray: 
+compactEnemies: 
   move.l MouseToRemoveStackpointer,a0 
-  lea MouseArray,a1 
-  move.w MouseIndex,d0
+  lea Enemies,a1 
+  move.w EnemyTail,d0
   clr d3 
 .loop
   move.b (a0)+,d3
   cmpa.l #MouseToRemoveStack,a0
   bge .end
   move.w d0,d2 
-  lsl.w #3,d2
-  lsl.w #3,d3
-  move.w (MouseX,a1,d2),d4
-  move.w d4,(MouseX,a1,d3)
-  move.w (MouseY,a1,d2),d4
-  move.w d4,(MouseY,a1,d3)
-  move.w (MouseVelocityX,a1,d2),d4
-  move.w d4,(MouseVelocityX,a1,d3)
-  move.w (MouseVelocityY,a1,d2),d4
-  move.w d4,(MouseVelocityY,a1,d3)
+  lsl.w #4,d2
+  lsl.w #4,d3
+  move.w (EnemyX,a1,d2),d4
+  move.w d4,(EnemyX,a1,d3)
+  move.w (EnemyY,a1,d2),d4
+  move.w d4,(EnemyY,a1,d3)
+  move.w (EnemyVelocityX,a1,d2),d4
+  move.w d4,(EnemyVelocityX,a1,d3)
+  move.w (EnemyVelocityY,a1,d2),d4
+  move.w d4,(EnemyVelocityY,a1,d3)
   move.w (SpriteFrame,a1,d4),(SpriteFrame,a1,d3)
   subq.w #1,d0
   jmp .loop
 .end 
-  move.w d0,(MouseIndex)
+  move.w d0,(EnemyTail)
   move.l a0,(MouseToRemoveStackpointer)
   rts 
 
@@ -237,6 +239,11 @@ removeBullet: Macro
   move.w (BulletY,a1,d3),(BulletY,a1,d1)
   move.w (BulletVelocityX,a1,d3),(BulletVelocityX,a1,d1)
   move.w (BulletVelocityY,a1,d3),(BulletVelocityY,a1,d1)
+  move.w #0,(BulletState,a1,d3)
+  move.w #0,(BulletX,a1,d3)
+  move.w #0,(BulletY,a1,d3)
+  move.w #0,(BulletVelocityX,a1,d3)
+  move.w #0,(BulletVelocityY,a1,d3)
 .endOfArray 
   subq.w #1,(BulletIndex)
 .zeroIndex
@@ -246,6 +253,7 @@ compactBulletArray:
   move.w (BulletIndex),d0 
   lea BulletArray,a0
   move.l a0,a1
+  subq.w #1,d0 
 .loop 
   move.w d0,d1 
   lsl.w #4,d1 
@@ -265,7 +273,6 @@ compactBulletArray:
 
 processBullets: ;d6 contains the current index. It's used in pushBullet so don't touch it!
   move.w (BulletIndex),d5
-  moveq #0,d6 
   cmp.w #0,d5
   ble .end ; no Bullets return
   subq.w #1,d5
@@ -293,8 +300,7 @@ processBullets: ;d6 contains the current index. It's used in pushBullet so don't
 .next2
   move.w d0,(BulletY,a0)
 .continue
-  add.l #16,a0
-  addq.w #1,d6 
+  add.l #BulletDataSize,a0
   dbf.w d5,.loop
 .end
   rts
