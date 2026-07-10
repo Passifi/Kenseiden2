@@ -22,6 +22,7 @@ Entry:
   ld sp,hl 
   EI
   IM 1
+  ld hl,Pitches
   jp main
   org &38 
 VBLANK:
@@ -45,84 +46,22 @@ main:
   jp main
 
 .next
-  ld a,0
-  ld b,0 
-  call changeAttunation
-  ld c,0 
-  ld hl,Pitches
-  ld a,(Index)
-  cp 0 
-  jr z,.getPitch 
-  ld c,a 
+byteProcessing:
   ld b,0
-  sla c 
-  rl b
-  sla c 
-  rl b 
-.getPitch
-  add hl,bc 
-  ld e,(hl)
-  inc hl 
-  ld d,(hl)
-  call changePitchNew 
-  inc hl 
-  ld c,(hl)
-  inc hl 
-  ld b,(hl)
-  ld (Counter),bc 
-  ld a,(Index)
-  inc a 
-  cp 11 
-  jp nz,.setIndex
-  ld a,0
-.setIndex
-  ld (Index),a
-  jp main
+  ld c,(hl) ; now contains controlbyte
+  push hl 
+    ld hl,SoundRoutineJMPTable
+    add hl,bc
+    jp (hl)
+processNextByte:
+  ld a,0 
+  cp b 
+  jp nz,main 
+  cp c 
+  jp nz,main 
 
-changeAttunation: ; a = channel, b = attenuation 
-  rrca 
-  rrca 
-  or b  
-  or &90 
-  ld (PSG),a
-  ret
+ jp byteProcessing
 
-changePitchNew: ; load pitchdata into de 
-  ld a,d
-  ld (PSG),a
-  ld a,e
-  ld (PSG),a
-  ret 
-
-changePitch: ; c = channel, de = frequnecy, a,b = scratch 
-  ld a,e 
-  and &0f 
-  ld b,a 
-
-  ld a,c 
-  rrca
-  rrca 
-  rrca 
-  or b 
-  or &80 
-
-  ld (PSG),a 
-
-  ld a,e 
-  and &F0
-  rrca 
-  rrca 
-  rrca 
-  rrca 
-  ld b,a 
-  ld a,d 
-  rlca
-  rlca
-  rlca 
-  rlca 
-  or a,b 
-  ld (PSG),a 
-  ret 
 SoundRoutines:
   ld a,(hl)
   ld b,0 
@@ -134,21 +73,46 @@ SoundRoutines:
 Wait:
 ChangePitchPSG:
 ChangePitchYM:
-ChangeVolumePGS:
+ChangeVolumePSG:
 ChangeVolumeFM:
 SetFMRegister:
 SetPSGNoiseRegister:
+EndOfTrack:
 NoteOn:
+  pop hl 
+  inc hl 
+  ld a,(hl) ; set Pitch
+  ld (PSG),a 
+  inc hl 
+  ld a,(hl)
+  ld (PSG),a
+  inc hl  ; set volume 
+  ld a,(hl)
+  ld (PSG),a 
+  inc hl ; set waitTime 
+  ld b,(hl) 
+  inc hl 
+  ld c,(hl)
+  push hl 
+    ld hl,Counter 
+    ld (hl),b
+    inc hl 
+    ld (hl),c
+  pop hl
+  jp processNextByte 
 NoteOff:
 Loop:
 
 .endOfCall00
   ret 
   
-Pitches: dw &8104, &0000,&8203, &01df,&8104, &0000,&8203, &0001,&8304, &0000,&8403, &01df,&8304, &0000,&8403, &0001,&8504, &0000,&8503, &01df,&8504, &0000,&8503, &0001,&8704, &0000,&8703, &01df,&8704, &0000,&8703, &0001,&8804, &0000,&8903, &01df,&8903, &0001,&8703, &00ef,&8804, &0001,&8304, &00ef,&8304, &0000,&8703, &0001,&8504, &0000,&8503, &00ef,&8504, &0001,&8704, &00ef,&8704, &0000,&8503, &0001,&8804, &0000,&8403, &00ef,&8804, &0001,&8a04, &00ef,&8a04, &0000,&8403, &0001,&8c04, &0000,&8503, &077f,&8c04, &0000,&8503, &0000
+Pitches:
+  incbin "./test.bin"
 SoundRoutineJMPTable:
-  dw Wait
-  dw ChangePitchYM
+  dw NoteOn
+  dw NoteOff
   dw ChangePitchPSG
+  dw ChangeVolumePSG
+  dw EndOfTrack
 Index: db 0 
 Counter: dw 0
