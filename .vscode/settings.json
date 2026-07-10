@@ -2,6 +2,8 @@
     "files.associations": {
         "*.asm": "m68k"
     },
-    "asm.languageServer" : "m68k",
+    "asm.languageServer": "m68k",
+    "workbench.activityBar.autoHide": false,
+    "workbench.colorTheme": "Solarized Dark",
 
 }

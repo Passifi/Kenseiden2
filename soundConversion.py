@@ -1,6 +1,9 @@
 from mido import MidiFile, merge_tracks
 from sys import argv
-
+from math import floor
+from queue import Queue
+def getPSGVelocity(value):
+    return floor((1 - value/127)*15)
 def extractTargetName(path):
     return path.split(".")[0] + ".bin"
 
@@ -19,7 +22,7 @@ class PSGEvent:
         'pitch_change': self.createPitch
 
         }
-        self.startTime = time
+        self.time = time
         if event == "note_on" and extrValue==15:
             event = 'note_off'
         self.eventData = self.convertToPSGEvent(channel,value,event,extrValue)
@@ -28,14 +31,14 @@ class PSGEvent:
         
     def getPitchValue(self,channel,value):
         bytes = bytearray() 
-        firstByte =  (value & 0x0f) | 0x80 | (channel << 4)
+        firstByte =  (value & 0x0f) | 0x80 | (channel << 5)
         secondByte = (value & 0X3f0)>>4 
         bytes.append(firstByte) 
         bytes.append(secondByte) 
         return bytes
     def getVolumeValue(self,channel,value):
         bytes = bytearray()
-        result = 0x90 | (channel>>5) | (value&0x0f) 
+        result = 0x90 | (channel<<5) | (value&0x0f) 
         bytes.append(result)
         return bytes
  
@@ -71,7 +74,7 @@ class PSGEvent:
             return self.createNoteOff(channel,value)
          
     def calculateWaitTime(self, previous: 'PSGEvent'):
-        return self.startTime - previous.startTime
+        return self.time - previous.time
     def __str__(self):
         result  = "".join([str(x) for x in self.eventData])
         return f"&{result}, &{self.waitTime:04x}"
@@ -108,31 +111,45 @@ quarterLength = bpm/60
 ticksPerSecondPerQuarter = mid.ticks_per_beat*quarterLength
 ticksPerFrame = ticksPerSecondPerQuarter/60
 
-time = 0 
-psgEvents =  []
-for msg in events:
-    time += msg.time 
-    if msg.type == 'note_on':
-        velocity = int((1 - msg.velocity/127)*15)
-        if msg.note in psg_pitch_table:
-            current = PSGEvent(msg.channel,msg.note,time,msg.type,velocity)
-            if len(psgEvents) >0: 
-                lastElement = psgEvents[-1] 
-                lastElement.waitTime = int(current.calculateWaitTime(lastElement)/ticksPerFrame)
-            psgEvents.append(current)
-    if msg.type == 'note_off':
-            current = PSGEvent(msg.channel,msg.note,time,msg.type)
-            if len(psgEvents) >0: 
-                lastElement = psgEvents[-1] 
-                lastElement.waitTime = int(current.calculateWaitTime(lastElement)/ticksPerFrame)
-            psgEvents.append(current)
+times = [0 for _ in mid.tracks]
+trackEvents = [Queue() for _ in mid.tracks]
 
-pgString = ",".join(str(el) for el in psgEvents)
+for channel,track in enumerate(mid.tracks): 
+
+    psgEvents =  trackEvents[channel]
+    for msg in track:
+        times[channel] += msg.time 
+        if msg.type == 'note_on':
+            velocity = getPSGVelocity(msg.velocity) 
+            if msg.note in psg_pitch_table:
+                current = PSGEvent(channel,msg.note,times[channel],msg.type,velocity)
+                if not psgEvents.empty(): 
+                    lastElement = psgEvents.queue[0]
+                    lastElement.waitTime = int(current.calculateWaitTime(lastElement)/ticksPerFrame)
+                psgEvents.put(current)
+
+# interleave tracks 
+
+finalEvents = []
+moreToGo = False
+while any(not track.empty() for track in trackEvents):
+    smallest = 4000000
+    candidate =  0
+    for i,track in enumerate(trackEvents):
+        if not track.empty() and track.queue[0].time < smallest:
+            candidate = i 
+            smallest = track.queue[0].time
+    finalEvents.append(trackEvents[candidate].get())
+
+
+
+
+pgString = ",".join(str(el) for el in finalEvents)
 
 result = "dw " + pgString
-print(f"Total Number of Elements: {len(psgEvents)}")
+print(f"Total Number of Elements: {len(finalEvents)}")
 print(result) 
 with open(targetFilepath,"wb") as f:
-    for el in psgEvents:
+    for el in finalEvents:
         f.write(el.eventData)
         f.write(el.waitTime.to_bytes(2,"little"))
