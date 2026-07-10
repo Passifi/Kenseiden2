@@ -50,8 +50,15 @@ byteProcessing:
   ld b,0
   ld c,(hl) ; now contains controlbyte
   push hl 
+    
     ld hl,SoundRoutineJMPTable
     add hl,bc
+    add hl,bc
+    ld c,(hl)
+    inc hl 
+    ld b,(hl)
+    ld h,b 
+    ld l,c
     jp (hl)
 processNextByte:
   ld a,0 
