@@ -84,7 +84,6 @@ if len(argv)< 2:
 else:  
     filepath = argv[1]
 targetFilepath = filepath.split(".")[0] + ".bin" 
-print(targetFilepath)
 pitches = [
     851,803,758,715,675,637,601,568,536,506,477,450 
 ]
@@ -104,9 +103,21 @@ try:
 except:
     print("File does not exist. Please provide a proper filepath")
     exit()
-print(f"Ticks per beat: {mid.ticks_per_beat}")
 events = merge_tracks(mid.tracks)
 bpm = 120 
+if len(argv) > 2:
+    try:
+        bpm = float(argv[2])
+        if bpm <= 0:
+            raise ValueError("No Negatives")
+    except(IndexError,ValueError):
+        print("Invalid bpm arguments please provide a valid number after the filename!")
+        print("BPM can't be 0 or negative")
+        print("Exiting Script...")
+        exit(1)
+    
+
+
 quarterLength = bpm/60
 ticksPerSecondPerQuarter = mid.ticks_per_beat*quarterLength
 ticksPerFrame = ticksPerSecondPerQuarter/60
@@ -142,8 +153,9 @@ while any(not track.empty() for track in trackEvents):
 pgString = ",".join(str(el) for el in finalEvents)
 
 result = "dw " + pgString
+print("Successfully converted Midifile!")
+print(f"Output file: {targetFilepath}")
 print(f"Total Number of Elements: {len(finalEvents)}")
-print(result) 
 with open(targetFilepath,"wb") as f:
     for el in finalEvents:
         f.write(el.eventData)
