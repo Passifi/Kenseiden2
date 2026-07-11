@@ -139,7 +139,7 @@ Loop:
   ret 
   
 Pitches:
-  incbin "./test.bin"
+  incbin "./assets/test.bin"
 SoundRoutineJMPTable:
   dw NoteOn
   dw NoteOff

@@ -257,14 +257,14 @@ letters:
   incbin "assets/letters.bin"
 lettersEnd:
 colors:
-  incbin "assets/palette.bin"
+  incbin "assets/catsprite_palette.bin"
   incbin "assets/frameTiles_palette.bin"
-  incbin "assets/enemy_palette.bin"
+  incbin "assets/catsprite_palette.bin"
   incbin "assets/mouse_palette.bin"
 colorsEnd:
 tileData:
   dc.l 0,0,0,0,0,0,0,0
-  incbin "assets/sprite.bin"
+  incbin "assets/catsprite.bin"
   incbin "assets/frameTiles.bin"
   incbin "assets/enemy.bin"
   incbin "assets/mouse.bin"
