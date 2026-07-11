@@ -1,7 +1,7 @@
 Sections:
 00: ".text" (0-D)
 01: "seg38" (38-3B)
-02: "seg100" (100-23B)
+02: "seg100" (100-262)
 
 
 Source: "sound.z80.asm"
@@ -29,7 +29,7 @@ Source: "sound.z80.asm"
 00:0003 F9              	    22:   ld sp,hl 
 00:0004 FB              	    23:   EI
 00:0005 ED56            	    24:   IM 1
-00:0007 216601          	    25:   ld hl,Pitches
+00:0007 218C01          	    25:   ld hl,Pitches
 00:000A C30001          	    26:   jp main
                         	    27:   org &38 
                         	    28: VBLANK:
@@ -38,7 +38,7 @@ Source: "sound.z80.asm"
                         	    31:   org &100
                         	    32: main: 
 02:0100 76              	    33:   halt
-02:0101 DD213902        	    34:   ld ix,Counter
+02:0101 DD216002        	    34:   ld ix,Counter
 02:0105 DD4601          	    35:   ld b,(ix+1)
 02:0108 CA2001          	    36:   jp z,.next
 02:010B DD4E00          	    37:   ld c,(ix)
@@ -49,158 +49,184 @@ Source: "sound.z80.asm"
 02:0115 CA2001          	    42:   jp z,.next
                         	    43: .loadBack
 02:0118 0B              	    44:   dec bc
-02:0119 ED433902        	    45:   ld (Counter),bc
+02:0119 ED436002        	    45:   ld (Counter),bc
 02:011D C30001          	    46:   jp main
                         	    47: 
                         	    48: .next
                         	    49: byteProcessing:
 02:0120 0600            	    50:   ld b,0
-02:0122 4E              	    51:   ld c,(hl) ; now contains controlbyte
-02:0123 E5              	    52:   push hl 
-                        	    53:     
-02:0124 212E02          	    54:     ld hl,SoundRoutineJMPTable
-02:0127 09              	    55:     add hl,bc
-02:0128 09              	    56:     add hl,bc
-02:0129 4E              	    57:     ld c,(hl)
-02:012A 23              	    58:     inc hl 
-02:012B 46              	    59:     ld b,(hl)
-02:012C 60              	    60:     ld h,b 
-02:012D 69              	    61:     ld l,c
-02:012E E9              	    62:     jp (hl)
-                        	    63: processNextByte:
-02:012F 3E00            	    64:   ld a,0 
-02:0131 B8              	    65:   cp b 
-02:0132 C20001          	    66:   jp nz,main 
-02:0135 B9              	    67:   cp c 
-02:0136 C20001          	    68:   jp nz,main 
-                        	    69: 
-02:0139 C32001          	    70:  jp byteProcessing
-                        	    71: 
-                        	    72: SoundRoutines:
-02:013C 7E              	    73:   ld a,(hl)
-02:013D 0600            	    74:   ld b,0 
-02:013F 4F              	    75:   ld c,a
-02:0140 214601          	    76:   ld hl,Wait 
-02:0143 09              	    77:   add hl,bc 
-02:0144 09              	    78:   add hl,bc 
-02:0145 E9              	    79:   jp (hl)
-                        	    80: Wait:
-                        	    81: ChangePitchPSG:
-                        	    82: ChangePitchYM:
-                        	    83: ChangeVolumePSG:
-                        	    84: ChangeVolumeFM:
-                        	    85: SetFMRegister:
-                        	    86: SetPSGNoiseRegister:
-                        	    87: EndOfTrack:
-                        	    88: NoteOn:
-02:0146 E1              	    89:   pop hl 
-02:0147 23              	    90:   inc hl 
-02:0148 7E              	    91:   ld a,(hl) ; set Pitch
-02:0149 32117F          	    92:   ld (PSG),a 
-02:014C 23              	    93:   inc hl 
-02:014D 7E              	    94:   ld a,(hl)
-02:014E 32117F          	    95:   ld (PSG),a
-02:0151 23              	    96:   inc hl  ; set volume 
-02:0152 7E              	    97:   ld a,(hl)
-02:0153 32117F          	    98:   ld (PSG),a 
-02:0156 23              	    99:   inc hl ; set waitTime 
-02:0157 46              	   100:   ld b,(hl) 
-02:0158 23              	   101:   inc hl 
-02:0159 4E              	   102:   ld c,(hl)
-02:015A E5              	   103:   push hl 
-02:015B 213902          	   104:     ld hl,Counter 
-02:015E 70              	   105:     ld (hl),b
-02:015F 23              	   106:     inc hl 
-02:0160 71              	   107:     ld (hl),c
-02:0161 E1              	   108:   pop hl
-02:0162 C32F01          	   109:   jp processNextByte 
-                        	   110: NoteOff:
-                        	   111: Loop:
-                        	   112: 
-                        	   113: .endOfCall00
-02:0165 C9              	   114:   ret 
-                        	   115:   
-                        	   116: Pitches:
-02:0166 00810495670100A2	   117:   incbin "./test.bin"
-02:016E 03B56701019F0000
-02:0176 01BF000000830495
-02:017E 000000A403B50000
-02:0186 019F000001BF0000
-02:018E 00850495000000A5
-02:0196 03B50000019F0000
-02:019E 01BF000000870495
-02:01A6 000000A703B50000
-02:01AE 019F000001BF0000
-02:01B6 00880495000000A9
-02:01BE 03B5000001BF0000
-02:01C6 00A703B50000019F
-02:01CE 0000008304950000
-02:01D6 019F000001BF0000
-02:01DE 00850495000000A5
-02:01E6 03B50000019F0000
-02:01EE 008704950000019F
-02:01F6 000001BF00000088
-02:01FE 0495000000A403B5
-02:0206 0000019F0000008A
-02:020E 04950000019F0000
-02:0216 01BF0000008C0495
-02:021E 000000A503B50000
-02:0226 019F000001BF0000
-                        	   118: SoundRoutineJMPTable:
-02:022E 4601            	   119:   dw NoteOn
-02:0230 6501            	   120:   dw NoteOff
-02:0232 4601            	   121:   dw ChangePitchPSG
-02:0234 4601            	   122:   dw ChangeVolumePSG
-02:0236 4601            	   123:   dw EndOfTrack
-02:0238 00              	   124: Index: db 0 
-02:0239 0000            	   125: Counter: dw 0
-                        	   126: 
+02:0122 7E              	    51:   ld a,(hl) ; now contains controlbyte
+02:0123 FEFF            	    52:   cp &ff
+02:0125 C22E01          	    53:   jp nz,.swapHL
+02:0128 218C01          	    54:   ld hl,Pitches
+02:012B C32001          	    55:   jp byteProcessing
+                        	    56: .swapHL
+02:012E 4F              	    57:   ld c,a
+02:012F 54              	    58:   ld d,h 
+02:0130 5D              	    59:   ld e,l
+02:0131 215502          	    60:   ld hl,SoundRoutineJMPTable
+02:0134 09              	    61:   add hl,bc
+02:0135 09              	    62:   add hl,bc
+02:0136 4E              	    63:   ld c,(hl)
+02:0137 23              	    64:   inc hl 
+02:0138 46              	    65:   ld b,(hl)
+02:0139 60              	    66:   ld h,b 
+02:013A 69              	    67:   ld l,c
+02:013B E9              	    68:   jp (hl)
+                        	    69: processNextByte:
+02:013C 3E00            	    70:   ld a,0 
+02:013E B8              	    71:   cp b 
+02:013F C20001          	    72:   jp nz,main 
+02:0142 B9              	    73:   cp c 
+02:0143 C20001          	    74:   jp nz,main 
+                        	    75: 
+02:0146 C32001          	    76:  jp byteProcessing
+                        	    77: 
+                        	    78: SoundRoutines:
+02:0149 7E              	    79:   ld a,(hl)
+02:014A 0600            	    80:   ld b,0 
+02:014C 4F              	    81:   ld c,a
+02:014D 215301          	    82:   ld hl,Wait 
+02:0150 09              	    83:   add hl,bc 
+02:0151 09              	    84:   add hl,bc 
+02:0152 E9              	    85:   jp (hl)
+                        	    86: Wait:
+                        	    87: ChangePitchPSG:
+                        	    88: ChangePitchYM:
+                        	    89: ChangeVolumePSG:
+                        	    90: ChangeVolumeFM:
+                        	    91: SetFMRegister:
+                        	    92: SetPSGNoiseRegister:
+                        	    93: EndOfTrack:
+                        	    94: NoteOn:
+02:0153 62              	    95:   ld h,d 
+02:0154 6B              	    96:   ld l,e
+02:0155 23              	    97:   inc hl 
+02:0156 7E              	    98:   ld a,(hl) ; set Pitch
+02:0157 32117F          	    99:   ld (PSG),a 
+02:015A 23              	   100:   inc hl 
+02:015B 7E              	   101:   ld a,(hl)
+02:015C 32117F          	   102:   ld (PSG),a
+02:015F 23              	   103:   inc hl  ; set volume 
+02:0160 7E              	   104:   ld a,(hl)
+02:0161 32117F          	   105:   ld (PSG),a 
+02:0164 23              	   106:   inc hl ; set waitTime 
+02:0165 46              	   107:   ld b,(hl) 
+02:0166 23              	   108:   inc hl 
+02:0167 4E              	   109:   ld c,(hl)
+02:0168 E5              	   110:   push hl 
+02:0169 216002          	   111:     ld hl,Counter 
+02:016C 70              	   112:     ld (hl),b
+02:016D 23              	   113:     inc hl 
+02:016E 71              	   114:     ld (hl),c
+02:016F E1              	   115:   pop hl
+02:0170 23              	   116:   inc hl
+02:0171 C33C01          	   117:   jp processNextByte 
+                        	   118: NoteOff:
+02:0174 62              	   119:   ld h,d 
+02:0175 6B              	   120:   ld l,e
+02:0176 23              	   121:   inc hl 
+02:0177 7E              	   122:   ld a,(hl)
+02:0178 32117F          	   123:   ld (PSG),a
+02:017B 23              	   124:   inc hl 
+02:017C 46              	   125:   ld b,(hl) 
+02:017D 23              	   126:   inc hl 
+02:017E 4E              	   127:   ld c,(hl)
+02:017F E5              	   128:   push hl 
+02:0180 216002          	   129:     ld hl,Counter 
+02:0183 70              	   130:     ld (hl),b
+02:0184 23              	   131:     inc hl 
+02:0185 71              	   132:     ld (hl),c
+02:0186 E1              	   133:   pop hl
+02:0187 23              	   134:   inc hl
+02:0188 C33C01          	   135:   jp processNextByte
+                        	   136: Loop:
+                        	   137: 
+                        	   138: .endOfCall00
+02:018B C9              	   139:   ret 
+                        	   140:   
+                        	   141: Pitches:
+02:018C 008E1395000000A6	   142:   incbin "./test.bin"
+02:0194 2FB51D00019F0000
+02:019C 01BF0000008C1195
+02:01A4 000000A32AB51D00
+02:01AC 019F000001BF0000
+02:01B4 008D0F95000000AD
+02:01BC 27B51D00019F0000
+02:01C4 01BF000000810E95
+02:01CC 000000A823B51D00
+02:01D4 019F000001BF0000
+02:01DC 00840D95000000AA
+02:01E4 1FB51D0001BF0000
+02:01EC 00A823B50E00019F
+02:01F4 0000008C11950E00
+02:01FC 019F000001BF0000
+02:0204 008D0F95000000AD
+02:020C 27B50E00019F0000
+02:0214 00810E950E00019F
+02:021C 000001BF00000084
+02:0224 0D95000000A32AB5
+02:022C 0E00019F0000008D
+02:0234 0B950E00019F0000
+02:023C 01BF000000880A95
+02:0244 000000AD27B57700
+02:024C 019F000001BF0000
+02:0254 FF
+                        	   143: SoundRoutineJMPTable:
+02:0255 5301            	   144:   dw NoteOn
+02:0257 7401            	   145:   dw NoteOff
+02:0259 5301            	   146:   dw ChangePitchPSG
+02:025B 5301            	   147:   dw ChangeVolumePSG
+02:025D 5301            	   148:   dw EndOfTrack
+02:025F 00              	   149: Index: db 0 
+02:0260 0000            	   150: Counter: dw 0
+                        	   151: 
 
 
 Symbols by name:
-ChangePitchPSG                   A:0146
-ChangePitchYM                    A:0146
-ChangeVolumeFM                   A:0146
-ChangeVolumePSG                  A:0146
-Counter                          A:0239
-EndOfTrack                       A:0146
+ChangePitchPSG                   A:0153
+ChangePitchYM                    A:0153
+ChangeVolumeFM                   A:0153
+ChangeVolumePSG                  A:0153
+Counter                          A:0260
+EndOfTrack                       A:0153
 Entry                           00:0000
-Index                            A:0238
-Loop                             A:0165
-NoteOff                          A:0165
-NoteOn                           A:0146
+Index                            A:025F
+Loop                             A:018B
+NoteOff                          A:0174
+NoteOn                           A:0153
 PSG                              E:7F11
-Pitches                          A:0166
-SetFMRegister                    A:0146
-SetPSGNoiseRegister              A:0146
-SoundRoutineJMPTable             A:022E
-SoundRoutines                    A:013C
+Pitches                          A:018C
+SetFMRegister                    A:0153
+SetPSGNoiseRegister              A:0153
+SoundRoutineJMPTable             A:0255
+SoundRoutines                    A:0149
 VBLANK                           A:0038
-Wait                             A:0146
+Wait                             A:0153
 byteProcessing                   A:0120
 main                             A:0100
-processNextByte                  A:012F
+processNextByte                  A:013C
 
 Symbols by value:
 0000 Entry
 0038 VBLANK
 0100 main
 0120 byteProcessing
-012F processNextByte
-013C SoundRoutines
-0146 ChangeVolumeFM
-0146 Wait
-0146 ChangePitchYM
-0146 NoteOn
-0146 ChangePitchPSG
-0146 ChangeVolumePSG
-0146 EndOfTrack
-0146 SetFMRegister
-0146 SetPSGNoiseRegister
-0165 NoteOff
-0165 Loop
-0166 Pitches
-022E SoundRoutineJMPTable
-0238 Index
-0239 Counter
+013C processNextByte
+0149 SoundRoutines
+0153 ChangeVolumeFM
+0153 Wait
+0153 ChangePitchYM
+0153 NoteOn
+0153 ChangePitchPSG
+0153 ChangeVolumePSG
+0153 EndOfTrack
+0153 SetFMRegister
+0153 SetPSGNoiseRegister
+0174 NoteOff
+018B Loop
+018C Pitches
+0255 SoundRoutineJMPTable
+025F Index
+0260 Counter
 7F11 PSG

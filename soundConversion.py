@@ -11,7 +11,7 @@ Note_On = 0x00
 Note_Off = 0x01
 ChangeVolume = 0x02
 ChangePitch = 0x03
-
+TrackEnd = 0xff
 class PSGEvent:
    
     def __init__(self,channel, value,time,event,extrValue=0):
@@ -122,10 +122,7 @@ for channel,track in enumerate(mid.tracks):
         if msg.type == 'note_on':
             velocity = getPSGVelocity(msg.velocity) 
             if msg.note in psg_pitch_table:
-                current = PSGEvent(channel,msg.note,times[channel],msg.type,velocity)
-                if not psgEvents.empty(): 
-                    lastElement = psgEvents.queue[0]
-                    lastElement.waitTime = int(current.calculateWaitTime(lastElement)/ticksPerFrame)
+                current = PSGEvent(channel,psg_pitch_table[msg.note],times[channel],msg.type,velocity)
                 psgEvents.put(current)
 
 # interleave tracks 
@@ -140,10 +137,8 @@ while any(not track.empty() for track in trackEvents):
             candidate = i 
             smallest = track.queue[0].time
     finalEvents.append(trackEvents[candidate].get())
-
-
-
-
+    if len(finalEvents) > 1:
+        finalEvents[-2].waitTime = int(finalEvents[-1].calculateWaitTime(finalEvents[-2])/ticksPerFrame)
 pgString = ",".join(str(el) for el in finalEvents)
 
 result = "dw " + pgString
@@ -153,3 +148,4 @@ with open(targetFilepath,"wb") as f:
     for el in finalEvents:
         f.write(el.eventData)
         f.write(el.waitTime.to_bytes(2,"little"))
+    f.write(TrackEnd.to_bytes(1,"little"))

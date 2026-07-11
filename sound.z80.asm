@@ -48,18 +48,24 @@ main:
 .next
 byteProcessing:
   ld b,0
-  ld c,(hl) ; now contains controlbyte
-  push hl 
-    
-    ld hl,SoundRoutineJMPTable
-    add hl,bc
-    add hl,bc
-    ld c,(hl)
-    inc hl 
-    ld b,(hl)
-    ld h,b 
-    ld l,c
-    jp (hl)
+  ld a,(hl) ; now contains controlbyte
+  cp &ff
+  jp nz,.swapHL
+  ld hl,Pitches
+  jp byteProcessing
+.swapHL
+  ld c,a
+  ld d,h 
+  ld e,l
+  ld hl,SoundRoutineJMPTable
+  add hl,bc
+  add hl,bc
+  ld c,(hl)
+  inc hl 
+  ld b,(hl)
+  ld h,b 
+  ld l,c
+  jp (hl)
 processNextByte:
   ld a,0 
   cp b 
@@ -86,7 +92,8 @@ SetFMRegister:
 SetPSGNoiseRegister:
 EndOfTrack:
 NoteOn:
-  pop hl 
+  ld h,d 
+  ld l,e
   inc hl 
   ld a,(hl) ; set Pitch
   ld (PSG),a 
@@ -106,8 +113,26 @@ NoteOn:
     inc hl 
     ld (hl),c
   pop hl
+  inc hl
   jp processNextByte 
 NoteOff:
+  ld h,d 
+  ld l,e
+  inc hl 
+  ld a,(hl)
+  ld (PSG),a
+  inc hl 
+  ld b,(hl) 
+  inc hl 
+  ld c,(hl)
+  push hl 
+    ld hl,Counter 
+    ld (hl),b
+    inc hl 
+    ld (hl),c
+  pop hl
+  inc hl
+  jp processNextByte
 Loop:
 
 .endOfCall00
