@@ -42,6 +42,9 @@ CheckVBlankStatus: MACRO
   ENDM
 AddPlayerSprite: MACRO 
   move.w #1,d2  ;replace with a constant for the player tileID
+  move.w (CurrentPlayerAnimationFrame),d3 
+  lsl.w #4,d3 
+  add.w d3,d2
   move.w (PlayerX),d0
   move.w (PlayerY),d1
   move.w #%1111,d3
@@ -79,6 +82,7 @@ EntryPoint:
   move.w #200,(PlayerX) 
   move.w #200,(PlayerY) 
   move.w #10,d1
+  move.l (MainClock),(LastAnimationTime)
   move.b #WAITING_FOR_VBLANK,(VblankStatus)
 ; ==================================
   ; copy initial tiles to VRAM by DMA 
@@ -134,6 +138,7 @@ main:
   jsr hitDetection 
   ;graphicsBlock 
   jsr clearSprites
+  jsr simplePlayerAnimation
   AddPlayerSprite
 
   jsr addEnemySprite
@@ -213,6 +218,24 @@ processStart:
 .end
   jsr movePlayer
   move.b d0,PressedButtons
+  rts
+
+PlayerFrameLength equ 30
+simplePlayerAnimation: 
+  move.l (LastAnimationTime),d0 
+  move.l (MainClock),d1 
+  sub.l d0,d1 
+  cmp #PlayerFrameLength,d1
+  blt .end 
+  move.w (CurrentPlayerAnimationFrame),d0 
+  addq.w #1,d0 
+  cmp #4,d0 
+  blt .wrapUp 
+  move.w #0,d0 
+.wrapUp
+  move.l (MainClock),(LastAnimationTime)
+  move.w d0,(CurrentPlayerAnimationFrame) 
+.end
   rts 
 
 HBlankInterrupt:
@@ -228,6 +251,9 @@ VBlankInterrupt:
     jsr spriteComplete ;finish the sprite table
     jsr copySpriteTable
     jsr copyTilemap
+    move.w #0,d0 
+    move.w #0,d1 
+    jsr switchPlayerAnimation
     ; other logic
     jsr updateScoreWindow
     jsr handleTimers
@@ -264,6 +290,7 @@ colors:
 colorsEnd:
 tileData:
   dc.l 0,0,0,0,0,0,0,0
+PlayerSpriteData: 
   incbin "assets/catsprite.bin"
   incbin "assets/frameTiles.bin"
   incbin "assets/enemy.bin"

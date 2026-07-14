@@ -1,4 +1,3 @@
-
 AnimationTimers equ $ff6000
 AnimationTimersEnd equ $ff6200
 PlayerAnimationTimer equ AnimationTimers 
@@ -44,10 +43,28 @@ handleAnimation:
   dbf d4,.loop
   rts 
 ; check the state
+
+PlayerFrameLength equ 30
+simplePlayerAnimation: 
+  move.l (lastAnimationTime),d0 
+  move.l (MainClock),d1 
+  sub.l d0,d1 
+  cmp #PlayerFrameLength,d1
+  bgt.w .end 
+  move.w (CurrenPlayerAnimationFrame),d0 
+  addq.w #1,d0 
+  cmp #4,d0 
+  blt .wrapUp 
+  move.w #0,d0 
+.wrapUp
+  move.l (MainClock),(lastAnimationTime)
+  move.w d0,(CurrenPlayerAnimationFrame) 
+.end
+  rts 
 playerAnimation:
-  lea Player,a2
   lea PlayerAnimation,a0
   lea PlayerAnimationData,a1 
+  lea Player,a2
   move.w (PlayerState,a2),d0 
   btst #7,d0
   bne animatePlayer

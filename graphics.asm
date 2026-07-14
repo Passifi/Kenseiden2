@@ -365,6 +365,29 @@ copyTilemap: ;
   ;jsr DMACopy
   rts
 
+PlayerGraphics equ $00ff30 ; needs to be a proper memory position 
+AnimationSize equ 32*8
+PlayerSpriteVRAMPosition equ PlayerSpriteData; dummy
+PlayerAnimationLength equ 4*32 
+AnimationIndexTable:
+  dc.w 0,AnimationSize*1,AnimationSize*2,AnimationSize*3
+  dc.w AnimationSize*4,AnimationSize*5,AnimationSize*6,AnimationSize*7
+switchPlayerAnimation: ; d0 contains playerStatus, d1 contains player AnimationFrame
+  lea AnimationIndexTable,a1  
+  lsl.w #1,d0  
+  move.w (0,a1,d0),d2 ;move animationOffset into d2 
+  lsl.w #1,d1 
+  add.w d1,d2 
+  lea PlayerGraphics,a0
+  adda.w d2,a0 
+  move.l a0,d2
+  ; now load x tiles of animationdata into the vdp at playerPosition 
+  move.w #VRAMWrite,d4 
+  move.w #PlayerSpriteVRAMPosition,d3 
+  move.w #PlayerAnimationLength,d1
+  jsr DMACopy
+  rts 
+
 addBulletSprites: 
   lea BulletArray,a1 
   move.w (BulletIndex),d6

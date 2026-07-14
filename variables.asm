@@ -26,7 +26,10 @@ PlayerXAccu         equ RAM_START+300
 PlayerYAccu         equ RAM_START+304
 PlayerX             equ PlayerXAccu
 PlayerY             equ PlayerYAccu 
-PlayerSpriteBase    equ PlayerYAccu+4  
+PlayerStatus        equ PlayerYAccu+4 
+PlayerSpriteBase    equ PlayerYAccu+8  
+CurrentPlayerAnimationFrame equ PlayerSpriteBase+4
+LastAnimationTime   equ CurrentPlayerAnimationFrame+4
 VblankStatus        equ RAM_START+500
 soundIndex          equ RAM_START+506
 soundTimer          equ RAM_START+510
