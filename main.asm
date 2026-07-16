@@ -296,6 +296,9 @@ PlayerSpriteData:
   incbin "assets/enemy.bin"
   incbin "assets/mouse.bin"
 tileDataEnd:
+TilemapData:
+  incbin "assets/tilemap.bin" 
+TilemapDataEnd:
 cursorData:
   move.w #0,d3
   incbin "assets/cursor.bin"
@@ -304,25 +307,6 @@ SoundStart:
   incbin "sound.bin"
 SoundEnd:
 
-sounddata:
-  dc.b VolumeBit,0,0,0 
-  dc.b PitchBit
-  dc.w C3
-  dc.b 1
-  dc.b PitchBit
-  dc.w GSharp3
-  dc.b 1
-  dc.b PitchBit
-  dc.w C3>>1
-  dc.w D3
-  dc.b 1
-  dc.b PitchBit
-  dc.w GSharp3>>1
-  dc.b 1
-  dc.b PitchBit
-  dc.w F3>>1
-  dc.b 1
-  dc.b 2,0,0,0
 errorStr:
   dc.b "something went wrong",0
 scoreStr: 

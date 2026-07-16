@@ -357,7 +357,44 @@ copyTilemap: ;
   ;couple of issues here. 1. How to find the exact area to fill in based on the scrollcutout 
   ; this is an issue for another function, and I guess this one should work fine 
   ; but i probably need to move away from a macro to setting d1,d2 before calling the copy tilemap
-  copyTilemapDynamic (TilemapEnd-Tilemap),Tilemap,$C000
+  copyTilemapDynamic 32*2,TilemapData+0,$C000+$0
+  copyTilemapDynamic 32*2,TilemapData+64,$C000+$80
+  copyTilemapDynamic 32*2,TilemapData+128,$C000+$100
+  copyTilemapDynamic 32*2,TilemapData+192,$C000+$180
+  copyTilemapDynamic 32*2,TilemapData+256,$C000+$200
+  copyTilemapDynamic 32*2,TilemapData+320,$C000+$280
+  copyTilemapDynamic 32*2,TilemapData+384,$C000+$300
+  copyTilemapDynamic 32*2,TilemapData+448,$C000+$380
+  copyTilemapDynamic 32*2,TilemapData+512,$C000+$400
+  copyTilemapDynamic 32*2,TilemapData+576,$C000+$480
+  copyTilemapDynamic 32*2,TilemapData+640,$C000+$500
+  copyTilemapDynamic 32*2,TilemapData+704,$C000+$580
+  copyTilemapDynamic 32*2,TilemapData+768,$C000+$600
+  copyTilemapDynamic 32*2,TilemapData+832,$C000+$680
+  copyTilemapDynamic 32*2,TilemapData+896,$C000+$700
+  copyTilemapDynamic 32*2,TilemapData+960,$C000+$780
+  copyTilemapDynamic 32*2,TilemapData+1024,$C000+$800
+  copyTilemapDynamic 32*2,TilemapData+1088,$C000+$880
+  copyTilemapDynamic 32*2,TilemapData+1152,$C000+$900
+  copyTilemapDynamic 32*2,TilemapData+1216,$C000+$980
+  copyTilemapDynamic 32*2,TilemapData+1280,$C000+$a00
+  copyTilemapDynamic 32*2,TilemapData+1344,$C000+$a80
+  copyTilemapDynamic 32*2,TilemapData+1408,$C000+$b00
+  copyTilemapDynamic 32*2,TilemapData+1472,$C000+$b80
+  copyTilemapDynamic 32*2,TilemapData+1536,$C000+$c00
+  copyTilemapDynamic 32*2,TilemapData+1600,$C000+$c80
+  copyTilemapDynamic 32*2,TilemapData+1664,$C000+$d00
+  copyTilemapDynamic 32*2,TilemapData+1728,$C000+$d80
+  copyTilemapDynamic 32*2,TilemapData+1792,$C000+$e00
+  copyTilemapDynamic 32*2,TilemapData+1856,$C000+$e80
+  copyTilemapDynamic 32*2,TilemapData+1920,$C000+$f00
+  copyTilemapDynamic 32*2,TilemapData+1984,$C000+$f80
+
+  ;copyTilemapDynamic 32*2,TilemapData,$C000
+  ;copyTilemapDynamic 32*2,TilemapData+32*2,$C000+$80 
+  ;copyTilemapDynamic 32*2,TilemapData+32*2*2,$C000+$100 
+  ;copyTilemapDynamic 32*2,TilemapData+32*2*3,$C000+$180
+  ;copyTilemapDynamic 32*2,TilemapData+32*2*4,$C000+$400 
   ;move.l #(TilemapEnd-Tilemap),d1 
   ;move.l #Tilemap,d2 
   ;move.l #$C000,d3 

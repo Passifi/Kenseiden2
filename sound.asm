@@ -93,7 +93,7 @@ soundRoutine:
   bgt .end
 .processing
   ; interval counter
-  lea (sounddata),a0 
+  lea 100,a0 
   move.l (soundIndex),d0
   lsl.l #2,d0  ; width of one instruction is 4 bytes
   adda.l d0,a0
