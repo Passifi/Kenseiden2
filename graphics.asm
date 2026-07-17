@@ -13,10 +13,10 @@ VDP_data    equ $c00000
 ; relative position of these window elements in PatternTable 
 ; must be adjusted when changing graphics loading routines 
 ; or it must be made sure that they remain the same inside the routine
-CornerBlock equ $11
-SingleLineBlock equ $12 
-TopLineBlock  equ $15
-MiddleBlock   equ $17
+CornerBlock equ FrameBlock
+SingleLineBlock equ CornerBlock+1
+TopLineBlock  equ SingleLineBlock+3
+MiddleBlock   equ TopLineBlock+2
 
 SCREEN_H equ 320 
 SCREEN_W equ 256 
@@ -65,10 +65,10 @@ SpriteSize equ 16
 ; TileAttributes  
 FlipTile_Horizontally equ $0800
 FlipTile_Vertically equ $1000
-TilePalette0        equ $0000 
-TilePalette1        equ $2000 
-TilePalette2        equ $4000 
-TilePalette3        equ $6000 
+Palette0        equ $0000 
+Palette1        equ $2000 
+Palette2        equ $4000 
+Palette3        equ $6000 
 TilePriority        equ $8000 
 
 
@@ -245,26 +245,26 @@ createWindowframe: ; needs to be called when the window was changed, or window d
   lea VDP_data,a0
   move.w #29,d1 
   writeToVRAMAddr $d000 
-  move.w #(CornerBlock|TilePalette1),(a0)
+  move.w #(CornerBlock|Palette2),(a0)
 .loopTop 
-  move.w #(TopLineBlock|TilePalette1),(a0)
+  move.w #(TopLineBlock|Palette2),(a0)
   dbf d1,.loopTop
-  move.w #(CornerBlock|FlipTile_Horizontally|TilePalette1),(a0)
+  move.w #(CornerBlock|FlipTile_Horizontally|Palette2),(a0)
   move.l #1,d4
 .middleBlockLoop
-  move.w #(SingleLineBlock|TilePalette1),(a0)
+  move.w #(SingleLineBlock|Palette2),(a0)
   move.w #29,d1
 .middleLoop 
-  move.w #(MiddleBlock|TilePalette1),(a0)
+  move.w #(MiddleBlock|Palette2),(a0)
   dbf d1,.middleLoop
-  move.w #(SingleLineBlock|FlipTile_Horizontally|TilePalette1),(a0)
+  move.w #(SingleLineBlock|FlipTile_Horizontally|Palette2),(a0)
   dbf d4,.middleBlockLoop
   move.w #29,d1
-  move.w #(CornerBlock|FlipTile_Vertically|TilePalette1),(a0)
+  move.w #(CornerBlock|FlipTile_Vertically|Palette2),(a0)
 .loopBottom 
-  move.w #(TopLineBlock|FlipTile_Vertically|TilePalette1),(a0)
+  move.w #(TopLineBlock|FlipTile_Vertically|Palette2),(a0)
   dbf d1,.loopBottom
-  move.w #(CornerBlock|FlipTile_Vertically|FlipTile_Horizontally|TilePalette1),(a0)
+  move.w #(CornerBlock|FlipTile_Vertically|FlipTile_Horizontally|Palette2),(a0)
   rts
 writeString: ; srcAddr: a0, targetAddr: d0, length: d2, note that we presume VDP writes  
   jsr setVRAMAddr
@@ -275,7 +275,7 @@ writeString: ; srcAddr: a0, targetAddr: d0, length: d2, note that we presume VDP
   cmp.b #0,d1
   beq .end
   addq.b #1,d1
-  or.w #TilePalette1,d1
+  or.w #Palette2,d1
   move.w d1,(a1)
   jmp .loop
 .end
@@ -435,8 +435,8 @@ addBulletSprites:
 .loop
   cmp #Dead,(BulletState,a1,d5)
   beq .deadBullet
-  move.w #BulletSpriteNo,d2
-  move.w #%0101,d3
+  move.w #BulletBlock,d2
+  move.w #%0000,d3
   move.w (BulletX,a1,d5),d0
   move.w (BulletY,a1,d5),d1
   lsr.w #4,d0
@@ -461,7 +461,7 @@ addEnemySprite:
   lsr.w #4,d0 
   lsr.w #4,d1 
   move.w #%0101,d3 
-  move.w #$25,d2
+  move.w #(MouseBlock|Palette3),d2
   jsr addSprite
   adda.w #4,a1
   dbf d6,.loop

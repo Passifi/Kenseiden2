@@ -32,8 +32,8 @@ updateScoreWindow: ; touches a0,a1,d0,d1
   add.w #Position_Zero_Digit,d0 ; $0bf being the position of 
   and.w #$000f,d1
   add.w #Position_Zero_Digit,d1
-  or.w #TilePalette1,d0 
-  or.w #TilePalette1,d1 
+  or.w #Palette2,d0 
+  or.w #Palette2,d1 
   move.w d0,(a0)
   move.w d1,(a0)
   cmpa.l #currentScoreEnd,a1

@@ -41,7 +41,7 @@ CheckVBlankStatus: MACRO
   bne main
   ENDM
 AddPlayerSprite: MACRO 
-  move.w #1,d2  ;replace with a constant for the player tileID
+  move.w #(CatBlock|Palette1),d2  ;replace with a constant for the player tileID
   move.w (CurrentPlayerAnimationFrame),d3 
   lsl.w #4,d3 
   add.w d3,d2
@@ -283,19 +283,28 @@ letters:
   incbin "assets/letters.bin"
 lettersEnd:
 colors:
+  incbin "assets/tilemap_palette.bin"
   incbin "assets/catsprite_palette.bin"
   incbin "assets/frameTiles_palette.bin"
-  incbin "assets/catsprite_palette.bin"
   incbin "assets/mouse_palette.bin"
 colorsEnd:
 tileData:
   dc.l 0,0,0,0,0,0,0,0
 PlayerSpriteData: 
+  incbin "assets/tilemap_tiles.bin"
+CatSpriteStart: 
   incbin "assets/catsprite.bin"
+FrameTilesStart:
   incbin "assets/frameTiles.bin"
-  incbin "assets/enemy.bin"
+BulletStart:
+  incbin "assets/bullet.bin"
+MouseTilesStart:
   incbin "assets/mouse.bin"
 tileDataEnd:
+CatBlock equ ((CatSpriteStart-PlayerSpriteData)/32)+1
+MouseBlock equ ((MouseTilesStart-PlayerSpriteData)/32)+1
+FrameBlock equ ((FrameTilesStart-PlayerSpriteData)/32)+1
+BulletBlock equ ((BulletStart-PlayerSpriteData)/32)+1
 TilemapData:
   incbin "assets/tilemap.bin" 
 TilemapDataEnd:
