@@ -87,6 +87,7 @@ EntryPoint:
 ; ==================================
   ; copy initial tiles to VRAM by DMA 
   move.l #GraphicStack,(GraphicStackPointer) 
+  ; improve to load tiles according to a block goal  
   move.l #((tileDataEnd-tileData)),d1 ;
   move.l #tileData,d2 
   move.l #$0000,d3

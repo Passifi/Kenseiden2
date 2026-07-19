@@ -111,6 +111,14 @@ SetWindowSize: MACRO
   or.b #\2,d0  
   move d0,(VDP_control) 
   ENDM
+
+streamTileDataToBlock: MACRO ; \1 length, \2 source \3 destination \4 (BlockNumber)
+  move.l #\1,d1 ;
+  move.l #\2,d2 
+  move.l #\3+\4*32,d3
+  move.l #VRAMWrite,d4
+  jsr DMACopy
+  ENDM 
 initializeVDP:
   writeToRegister (Mode1_Base|HV_CounterBit),(VDP_mode_1) 
   writeToRegister ((Mode2_Base)|%01100000),VDP_mode_2
@@ -350,7 +358,7 @@ copyTilemapDynamic: Macro ;1 is length \2 is src /3 is destination
   move.l #\1,d1
   move.l #\2,d2 
   move.l #\3,d3 
-  move.l #VRAMWrite,d4  
+  move.l #VRAMWrite,d4  +
   jsr DMACopy 
   ENDM
 copyTilemap: ;

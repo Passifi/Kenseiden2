@@ -13,6 +13,13 @@ A_3 equ	506>>1
 ASharp3 equ	477>>1
 B_3	equ 450>>1
 
+NoiseChannel equ %01100000
+WhiteNoise equ 4 
+BrownNoise equ 0 
+HighPitchNoise equ 0 
+MidPitchNoise equ 1 
+LowPitchNoise equ 2 
+NoiseFrequencyChannel3 equ 3 
 PSGChannel1 equ 0 
 PSGChannel2 equ &64 
 PSGChannel3 equ &128
@@ -69,12 +76,51 @@ byteProcessing:
 processNextByte:
   ld a,0 
   cp b 
-  jp nz,main 
+  jp nz,sfxProcessing 
   cp c 
-  jp nz,main 
+  jp nz,sfxProcessing
 
  jp byteProcessing
+sfxProcessing:
+  push hl 
+  ld a,(sfxIsPlaying)
+  cp 0 
+  jp z,.checkSfxStack
+  ld a,0
+  ld b,(sfxTimerHigh)
+  ld c,(sfxTimerLow)
+  dec c 
+  cp c
+  jp nz,.checkSfxStack
+  dec b 
+  jp nz,.checkSfxStack
+.processCurrentEffect
+  ld h,(currentEffectAddressHigh) 
+  ld l,(currentEffectAddressLow) 
+  call (hl)
+  
+.checkSfxStack
+  pop hl 
+  jp main
 
+Snare: 
+  ld a,(snareTime)
+  cp 0 
+  jp z,.startSnare
+  dec a 
+  jp nz,.end
+  ; psg noise channel to 0
+  ld a,NoiseChannel|&90|&f
+  ld (PSG),a
+  ;reset sfx Command to null
+  jp .end
+.startSnare
+  ld a,NoiseChanne|&80|WhiteNoise|HighPitchNoise
+  ld (PSG),a
+  ld a,SnareLength ; still needs to be defined 
+  ld (snareTime),a 
+.end 
+  rts 
 SoundRoutines:
   ld a,(hl)
   ld b,0 
@@ -139,7 +185,7 @@ Loop:
   ret 
   
 Pitches:
-  incbin "./assets/test.bin"
+  incbin "./assets/arp.bin"
 SoundRoutineJMPTable:
   dw NoteOn
   dw NoteOff

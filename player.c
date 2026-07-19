@@ -1,5 +1,7 @@
+#include <string.h>
 #define State int
 #define Ticks unsigned int
+#include <stdint.h>
 struct AnimationData {
   int maxFrames; 
   Ticks frameLength;
@@ -40,4 +42,19 @@ void animate( struct Animation* animation) {
     }
     animation->timeRemaining=playerAnimations[animation->dataIndex].frameLength;
   }
+}
+#define VDP_BASE 0xff0000
+#define sizeOfBlock 32
+#define VDP_CTRL_WORD (*(volatile uint16_t*)0xc00004u)
+#define VDP_CTRL_LONG (*(volatile uint32_t*)0xc00004u)
+#define VDP_DATA (*(volatile uint16_t*)0xc00000u)
+void loadSprite(int block, char* sourceAddress, char* scrollPlaneAddress)
+{
+  setVDPRAMWrite(scrollPlaneAddress,block*sizeOfBlock); 
+  for(int i= 0; i < 8;i++) {
+    uint16_t value= 0;
+    value = ((uint16_t)sourceAddress[0])<<8|(uint16_t)sourceAddress[1];
+    VDP_DATA = value;
+    sourceAddress+=2;
+  }  
 }
