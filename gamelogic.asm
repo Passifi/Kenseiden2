@@ -13,8 +13,10 @@ EnemyX equ EnemyState+2
 EnemyY equ EnemyX+2
 EnemyVelocityX equ EnemyY+2
 EnemyVelocityY equ EnemyVelocityX+2
+MaxEnemies equ 16
 SpriteFrame equ EnemyVelocityY+2 
 EnemyDataSize equ 16
+SpawnTimer equ $3000
 
 MouseW equ 8<<4 
 MouseH equ 8<<4
@@ -106,6 +108,22 @@ hitDetection:
   blt .outerLoop
 .end
   rts
+
+spawnEnemies:
+  move.w (EnemyTail),d0
+  cmp #MaxEnemies,d0
+  ble .end 
+  subq.w #1,(SpawnTimer) 
+  bgt .end
+  move.w #300,(SpawnTimer)
+  jsr rng 
+  move.l d0,d1 
+  lsr.w #8,d1  
+  and.b #127,d1
+  and.b #127,d1  
+  jsr addEnemy 
+.end 
+  rts 
 
 addEnemy: ;d0,d1 -> x,y
   lea Enemies,a0 

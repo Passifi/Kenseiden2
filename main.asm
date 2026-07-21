@@ -1,4 +1,3 @@
-  
   include "variables.asm" 
   include "system/cpuVectors.asm"
   include "system/cartridgeHeader.asm"
@@ -14,6 +13,7 @@ Data_Port_1 equ $A10003
 Z80Ram      equ $A00000  ; Where Z80 RAM starts
 Z80BusReq   equ $A11100  ; Z80 bus request line
 Z80Reset    equ $A11200  ; Z80 reset line
+
 
 ; constants 
 WAITING_FOR_VBLANK      equ 0 
@@ -134,6 +134,7 @@ main:
   jsr inputHandler 
   jsr processBullets
   jsr compactBulletArray
+  jsr spawnEnemies
   jsr moveMouses
   jsr steerEnemies
   jsr hitDetection 
@@ -141,7 +142,6 @@ main:
   jsr clearSprites
   jsr simplePlayerAnimation
   AddPlayerSprite
-
   jsr addEnemySprite
   jsr addBulletSprites
   ResetVBlankStatus 
