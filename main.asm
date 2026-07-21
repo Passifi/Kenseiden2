@@ -2,7 +2,6 @@
   include "system/cpuVectors.asm"
   include "system/cartridgeHeader.asm"
   include "graphics.asm"
-  include "sound.asm"
   include "gamelogic.asm"; 
   include "memory.asm"
   include "utils.asm"
@@ -14,7 +13,8 @@ Z80Ram      equ $A00000  ; Where Z80 RAM starts
 Z80BusReq   equ $A11100  ; Z80 bus request line
 Z80Reset    equ $A11200  ; Z80 reset line
 
-
+PressWait           equ $30
+MaxTimers           equ 20 
 ; constants 
 WAITING_FOR_VBLANK      equ 0 
 VBLANK_OCCURED          equ 1

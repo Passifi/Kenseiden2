@@ -16,7 +16,6 @@ EnemyVelocityY equ EnemyVelocityX+2
 MaxEnemies equ 16
 SpriteFrame equ EnemyVelocityY+2 
 EnemyDataSize equ 16
-SpawnTimer equ $3000
 
 MouseW equ 8<<4 
 MouseH equ 8<<4
