@@ -6,15 +6,15 @@ EditingFlags        equ RAM_START+2 ;byte
 ScrollPosition      equ RAM_START+6 ;long
 randomSeed          equ RAM_START+10 ;long
 currentScore        equ RAM_START+20 ;long
-currentScoreEnd     equ currentScore+5 ;marker
-shotDirection       equ currentScoreEnd+11 ; marker 
+currentScoreEnd     equ currentScore+4 ;marker
+shotDirection       equ currentScoreEnd+20 ; marker 
 shotDirectionX      equ shotDirection ;word
 shotDirectionY      equ shotDirection+2 ;word
-VblankStatus        equ RAM_START+shotDirectionY ;byte
+VblankStatus        equ shotDirectionY+2 ;byte
 ;Timer Data
 MainTimer           equ RAM_START+300 ; Long
 SpawnTimer          equ MainTimer+4 ;long
-TimerArray          equ SpawnTimer+4 ;; consider always marking how large a memory block is and not just where it starts
+TimerArray          equ SpawnTimer+20 ;; consider always marking how large a memory block is and not just where it starts
 WaitTimer           equ TimerArray ;word
 TimerIndex          equ TimerArray-2 ;word
 MainClock           equ TimerArray-6 ;long
@@ -44,7 +44,7 @@ BulletStackPointer    equ BulletsToRemoveStack+8
 ;Enemy Data
 EnemyBlock        equ RAM_START+$3000
 MouseToRemoveStack equ EnemyBlock 
-MouseToRemoveStackpointer equ  MouseToRemoveStack+4 
+MouseToRemoveStackpointer equ  MouseToRemoveStack+4  e
 ;Tilemap Data
 TilemapBlock:
 Tilemap             equ RAM_START+$4000

@@ -1,11 +1,11 @@
 param(
   
-  [switch]$NoSound,
+  [switch]$Sound,
   [switch]$Debug
 
 )
 
-if(-not $NoSound) 
+if($Sound) 
 {
 vasmz80_oldstyle.exe .\sound.z80.asm -Fbin -L .\linkfiles\sound.txt -o sound.bin
 }

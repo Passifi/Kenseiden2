@@ -126,6 +126,7 @@ EntryPoint:
   jsr addEnemy
   move.l #33,(randomSeed)
   ResumeZ80
+  writeToRegister ((Mode2_Base)|%01100000),VDP_mode_2 ;activate display and VIrq
   TurnOnIRQ
 main:
   CheckVBlankStatus

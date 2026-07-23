@@ -112,6 +112,8 @@ SetWindowSize: MACRO
   move d0,(VDP_control) 
   ENDM
 
+
+
 streamTileDataToBlock: MACRO ; \1 length, \2 source \3 destination \4 (BlockNumber)
   move.l #\1,d1 ;
   move.l #\2,d2 
@@ -121,7 +123,7 @@ streamTileDataToBlock: MACRO ; \1 length, \2 source \3 destination \4 (BlockNumb
   ENDM 
 initializeVDP:
   writeToRegister (Mode1_Base|HV_CounterBit),(VDP_mode_1) 
-  writeToRegister ((Mode2_Base)|%01100000),VDP_mode_2
+  writeToRegister ((Mode2_Base)|%00000000),VDP_mode_2
   writeToRegister %00000000,VDP_mode_3 
   writeToRegister $30,PatternA_addr 
   writeToRegister $34,PatternWindow_addr 
@@ -464,8 +466,8 @@ addEnemySprite:
   subq.w #1,d6
   add.w #2,a1
 .loop
-  move.w (a1)+,d0 
-  move.w (a1)+,d1
+  move.w (a1)+,d0 ; enemyX
+  move.w (a1)+,d1 ; enemyY
   lsr.w #4,d0 
   lsr.w #4,d1 
   move.w #%0101,d3 

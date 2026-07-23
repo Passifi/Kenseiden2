@@ -111,15 +111,17 @@ hitDetection:
 spawnEnemies:
   move.w (EnemyTail),d0
   cmp #MaxEnemies,d0
-  ble .end 
+  bgt .end 
   subq.w #1,(SpawnTimer) 
   bgt .end
-  move.w #300,(SpawnTimer)
+  move.w #30,(SpawnTimer)
   jsr rng 
   move.l d0,d1 
-  lsr.w #8,d1  
-  and.b #127,d1
-  and.b #127,d1  
+  lsr.l #8,d1  
+  and.w #127,d0
+  lsl.w #4,d0
+  and.w #127,d1  
+  lsl.w #4,d1
   jsr addEnemy 
 .end 
   rts 
